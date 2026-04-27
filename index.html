@@ -3304,12 +3304,12 @@ function setLoading(tipo, show, msg='Generando…'){
 // ══════════════════════════════════════════════════════
 const SUPA_URL  = 'https://gmnnamzexjlvrfksnqev.supabase.co';
 const SUPA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdtbm5hbXpleGpsdnJma3NucWV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMDE0MDQsImV4cCI6MjA5Mjg3NzQwNH0.I4OyyLmPkCB79HeCbtzO1VpDlb2T3bQG5XlQ8Pzke88';
-let supabase = null;
+let _supaClient = null;
 let currentUser = null;
 
 function initSupabase(){
   try {
-    supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+    _supaClient = window.supabase.createClient(SUPA_URL, SUPA_KEY);
   } catch(e){ console.error('Supabase init error:', e); }
 }
 
@@ -3321,7 +3321,7 @@ async function doLogin(){
   const btn = document.getElementById('btn-ms-login');
   btn.disabled = true; btn.textContent = 'Iniciando sesión…';
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await _supaClient.auth.signInWithPassword({ email, password });
     if(error) throw error;
     currentUser = data.user;
     onLoginSuccess(data.user);
@@ -3332,7 +3332,7 @@ async function doLogin(){
 }
 
 async function doLogout(){
-  await supabase.auth.signOut();
+  await _supaClient.auth.signOut();
   currentUser = null;
   showLoginOverlay('login');
   showToast('Sesión cerrada');
@@ -3379,13 +3379,13 @@ function setSyncStatus(state,msg){
 
 // ── LOAD FROM SUPABASE ────────────────────────────────
 async function loadDataFromSupabase(){
-  if(!supabase||!currentUser) return;
+  if(!_supaClient||!currentUser) return;
   try {
     const [climaRes, evalRes, colabRes, cfgRes] = await Promise.all([
-      supabase.from('irh_clima').select('*').order('created_at', {ascending:false}),
-      supabase.from('irh_eval').select('*').order('created_at', {ascending:false}),
-      supabase.from('irh_colaboradores').select('*').order('nombre'),
-      supabase.from('irh_config').select('*').limit(1)
+      _supaClient.from('irh_clima').select('*').order('created_at', {ascending:false}),
+      _supaClient.from('irh_eval').select('*').order('created_at', {ascending:false}),
+      _supaClient.from('irh_colaboradores').select('*').order('nombre'),
+      _supaClient.from('irh_config').select('*').limit(1)
     ]);
     if(climaRes.data?.length){ CO_RESP = climaRes.data.map(sparseSupa); saveDB('irh_co_resp',CO_RESP); }
     if(evalRes.data?.length){ ED_RESP = evalRes.data.map(sparseSupa); saveDB('irh_ed_resp',ED_RESP); }
@@ -3404,13 +3404,13 @@ function sparseSupa(row){
 
 // ── SAVE TO SUPABASE ──────────────────────────────────
 async function saveToSupabase(table, entry){
-  if(!supabase||!currentUser){ return; }
+  if(!_supaClient||!currentUser){ return; }
   try {
     setSyncStatus('syncing','Guardando…');
     if(entry._supaid){
-      await supabase.from(table).update({ data_json: entry }).eq('id', entry._supaid);
+      await _supaClient.from(table).update({ data_json: entry }).eq('id', entry._supaid);
     } else {
-      const { data } = await supabase.from(table).insert({ data_json: entry }).select().single();
+      const { data } = await _supaClient.from(table).insert({ data_json: entry }).select().single();
       if(data) entry._supaid = data.id;
     }
     setSyncStatus('ok','Guardado · '+new Date().toLocaleTimeString('es-DO'));
@@ -3421,18 +3421,18 @@ async function saveToSupabase(table, entry){
 }
 
 async function deleteFromSupabase(table, supaid){
-  if(!supabase||!currentUser||!supaid) return;
-  try { await supabase.from(table).delete().eq('id', supaid); } catch(err){ console.warn('deleteFromSupabase:', err.message); }
+  if(!_supaClient||!currentUser||!supaid) return;
+  try { await _supaClient.from(table).delete().eq('id', supaid); } catch(err){ console.warn('deleteFromSupabase:', err.message); }
 }
 
 async function saveConfigToSupabase(){
-  if(!supabase||!currentUser) return;
+  if(!_supaClient||!currentUser) return;
   try {
-    const existing = await supabase.from('irh_config').select('id').limit(1);
+    const existing = await _supaClient.from('irh_config').select('id').limit(1);
     if(existing.data?.length){
-      await supabase.from('irh_config').update({ config_json: CFG }).eq('id', existing.data[0].id);
+      await _supaClient.from('irh_config').update({ config_json: CFG }).eq('id', existing.data[0].id);
     } else {
-      await supabase.from('irh_config').insert({ config_json: CFG });
+      await _supaClient.from('irh_config').insert({ config_json: CFG });
     }
   } catch(err){ console.warn('saveConfig:', err.message); }
 }
@@ -3497,7 +3497,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   initSupabase();
   if(!detectarModoParticipante()){
     // Check for existing session
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await _supaClient.auth.getSession();
     if(session?.user){ currentUser=session.user; onLoginSuccess(session.user); }
     else showLoginOverlay('login');
   }
