@@ -253,6 +253,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 .link-qr-wrap{display:flex;justify-content:center;margin:.5rem 0;}
 /* MODO PARTICIPANTE */
 .pub-mode body{background:var(--bg);}
+#panel-participante, #panel-participante * { visibility:visible !important; }
 .pub-form-wrap{max-width:820px;margin:0 auto;padding:2rem 1rem;}
 .pub-welcome{background:var(--white);border-radius:var(--r);box-shadow:var(--sh-md);overflow:hidden;margin-bottom:1.5rem;}
 .pub-welcome-header{background:var(--purple);padding:2rem 2.5rem;color:#fff;}
@@ -2947,10 +2948,15 @@ function mostrarExpired(empresa){
 function activarModoParticipante(){
   // Show participant panel fullscreen - it's position:fixed z-index:500 so covers everything
   const panel = document.getElementById('panel-participante');
-  panel.style.cssText = 'display:block !important;position:fixed;inset:0;z-index:500;background:var(--bg);overflow-y:auto;';
+  panel.style.cssText = 'display:block !important;position:fixed;inset:0;z-index:500;background:var(--bg);overflow-y:auto;visibility:visible !important;';
   // Also hide admin UI for cleanliness
   try { document.querySelector('.sidebar').style.display='none'; } catch(e){}
-  try { document.querySelector('.main').style.display='none'; } catch(e){}
+  try {
+    const mainEl = document.querySelector('.main');
+    mainEl.classList.remove('auth-hide');
+    mainEl.style.visibility = 'hidden';
+    mainEl.style.pointerEvents = 'none';
+  } catch(e){}
   try { document.getElementById('sp-user-bar').style.display='none'; } catch(e){}
   try { document.getElementById('menu-toggle').style.display='none'; } catch(e){}
   try { document.getElementById('sp-login-overlay').classList.remove('vis'); } catch(e){}
