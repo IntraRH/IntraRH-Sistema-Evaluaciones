@@ -2087,7 +2087,7 @@ function toggleCfg(id){ const el=document.getElementById(id); if(el) el.checked=
 // -- SHAREPOINT / MSAL INTEGRATION --
 const SP_SITE_URL   = 'https://intrarhecursos.sharepoint.com/sites/INTRARHECURSOS';
 const SP_GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
-const SP_SCOPES     = ['Sites.ReadWrite.All','Mail.Send','User.Read'];
+const SP_SCOPES     = ['Sites.Read.All','Sites.Manage.All','Mail.Send','User.Read'];
 const SP_LIST_CLIMA  = 'IRH_Clima_Respuestas';
 const SP_LIST_EVAL   = 'IRH_Evaluacion_Respuestas';
 const SP_LIST_COLABS = 'IRH_Colaboradores';
