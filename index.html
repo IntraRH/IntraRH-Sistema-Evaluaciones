@@ -501,10 +501,12 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
     <div class="nav-item active" onclick="goPanel('dashboard',this)"><span class="nav-icon">🏠</span>Dashboard</div>
 
     <div class="nav-label">Clima Organizacional</div>
+    <div class="nav-item" onclick="goPanel('co-cuestionarios',this)"><span class="nav-icon">📝</span>Cuestionarios</div>
     <div class="nav-item" onclick="goPanel('co-respuestas',this)"><span class="nav-icon">📊</span>Respuestas</div>
     <div class="nav-item" onclick="goPanel('co-analisis',this)"><span class="nav-icon">🔬</span>Análisis</div>
 
     <div class="nav-label">Evaluación de Desempeño</div>
+    <div class="nav-item" onclick="goPanel('ed-cuestionarios',this)"><span class="nav-icon">📝</span>Cuestionarios</div>
     <div class="nav-item" onclick="goPanel('ed-respuestas',this)"><span class="nav-icon">📊</span>Resultados</div>
     <div class="nav-item" onclick="goPanel('ed-analisis',this)"><span class="nav-icon">🔬</span>Análisis</div>
 
@@ -543,6 +545,79 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 </div>
 
 <!-- ─── MODO PARTICIPANTE (pantalla completa sin sidebar) ─── -->
+
+<!-- CLIMA CUESTIONARIOS PANEL -->
+<div id="panel-co-cuestionarios" class="panel">
+  <div class="ph">
+    <div><div class="ph-title">&#x1F4DD; Cuestionarios &mdash; Clima Organizacional</div><div class="ph-sub">Gestiona las plantillas de encuesta de clima por empresa</div></div>
+    <div class="ph-actions"><button class="btn btn-primary" onclick="openCuestionarioModal('clima')">+ Nuevo cuestionario</button></div>
+  </div>
+  <div class="nota-blue">&#x1F4A1; Cada cuestionario tiene su propia configuraci&oacute;n: empresa, logo, escala, dimensiones y preguntas. Al generar un link puedes elegir qu&eacute; cuestionario usar.</div>
+  <div id="co-cuest-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem;"></div>
+  <div id="co-cuest-empty" style="display:none;text-align:center;padding:3rem;color:var(--muted);">
+    <div style="font-size:2.5rem;margin-bottom:.8rem;">&#x1F4DD;</div>
+    <div style="font-weight:700;">No hay cuestionarios de clima creados</div>
+    <div style="font-size:.8rem;margin-top:.3rem;">Crea tu primer cuestionario personalizado por empresa</div>
+  </div>
+</div>
+
+<!-- EVAL CUESTIONARIOS PANEL -->
+<div id="panel-ed-cuestionarios" class="panel">
+  <div class="ph">
+    <div><div class="ph-title">&#x1F4DD; Cuestionarios &mdash; Evaluaci&oacute;n de Desempe&ntilde;o</div><div class="ph-sub">Gestiona las plantillas de evaluaci&oacute;n por empresa</div></div>
+    <div class="ph-actions"><button class="btn btn-primary" onclick="openCuestionarioModal('eval')">+ Nuevo cuestionario</button></div>
+  </div>
+  <div class="nota-blue">&#x1F4A1; Cada cuestionario tiene su propia configuraci&oacute;n: empresa, logo, escala, competencias y objetivos.</div>
+  <div id="ed-cuest-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem;"></div>
+  <div id="ed-cuest-empty" style="display:none;text-align:center;padding:3rem;color:var(--muted);">
+    <div style="font-size:2.5rem;margin-bottom:.8rem;">&#x1F4DD;</div>
+    <div style="font-weight:700;">No hay cuestionarios de evaluaci&oacute;n creados</div>
+    <div style="font-size:.8rem;margin-top:.3rem;">Crea tu primer cuestionario de evaluaci&oacute;n de desempe&ntilde;o</div>
+  </div>
+</div>
+
+<!-- MODAL CUESTIONARIO -->
+<div class="modal-overlay" id="m-cuestionario">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <span class="modal-title" id="m-cuest-title">&#x1F4DD; Cuestionario</span>
+      <button class="modal-close" onclick="closeModal('m-cuestionario')">&#x2715;</button>
+    </div>
+    <input type="hidden" id="m-cuest-id">
+    <input type="hidden" id="m-cuest-tipo">
+    <div class="fr">
+      <div class="fg"><label class="fl">Nombre del cuestionario *</label><input class="fi" id="m-cuest-nombre" placeholder="Ej: Encuesta Clima Q2 2025"></div>
+      <div class="fg"><label class="fl">Empresa *</label><input class="fi" id="m-cuest-empresa" placeholder="Nombre de la empresa o cliente"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Logo empresa (URL de imagen, opcional)</label><input class="fi" id="m-cuest-logo" placeholder="https://empresa.com/logo.png" oninput="previewLogo()"></div>
+      <div style="display:flex;align-items:center;gap:.5rem;padding-top:1.4rem;">
+        <img id="m-cuest-logo-preview" src="" alt="" style="height:38px;max-width:110px;object-fit:contain;border:1px solid var(--border);border-radius:var(--rs);display:none;">
+      </div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Escala de calificaci&oacute;n</label>
+        <select class="fi" id="m-cuest-escala"><option value="5">1 &ndash; 5</option><option value="10">1 &ndash; 10</option></select>
+      </div>
+      <div class="fg" id="m-cuest-anon-wrap"><label class="fl">Anonimato (solo Clima)</label>
+        <select class="fi" id="m-cuest-anonimato">
+          <option value="siempre">Siempre an&oacute;nimo</option>
+          <option value="opcional">Opcional</option>
+          <option value="nunca">Siempre identificado</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Descripci&oacute;n / mensaje de bienvenida</label>
+      <textarea class="fi" id="m-cuest-descripcion" rows="2" placeholder="Instrucciones para el participante..."></textarea>
+    </div>
+    <div id="m-cuest-secciones"></div>
+    <div class="factions">
+      <button class="btn btn-ghost" onclick="closeModal('m-cuestionario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCuestionario()">&#x1F4BE; Guardar cuestionario</button>
+    </div>
+  </div>
+</div>
+
 <div id="panel-participante" style="display:none;position:fixed;inset:0;z-index:500;background:var(--bg);overflow-y:auto;">
   <div class="pub-form-wrap">
     <div class="pub-welcome" id="pub-welcome-card">
@@ -575,10 +650,14 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
     <!-- Formulario público: mismo card style que el panel interno pero sin sidebar -->
     <div class="card" style="margin-bottom:0;border-radius:var(--r) var(--r) 0 0;display:none;">
       <div class="pub-header">
-        <div class="pub-brand"><h1>Intra<em>RH</em>ecursos</h1><p>Gestión · Consultoría · Desarrollo Humano</p></div>
+        <div class="pub-brand" id="pub-brand-wrap">
+          <div id="pub-logo-wrap" style="display:none;margin-bottom:4px;"><img id="pub-logo-img" src="" alt="" style="height:38px;max-width:130px;object-fit:contain;"></div>
+          <h1 id="pub-brand-name">Intra<em>RH</em>ecursos</h1>
+          <p id="pub-brand-sub">Gestión · Consultoría · Desarrollo Humano</p>
+        </div>
         <div class="pub-meta">
           <div id="pub-form-code" style="font-weight:800;font-size:.75rem;color:var(--purple);"></div>
-          <div>Versión 1 · 2025</div>
+          <div>IntraRHecursos · 2025</div>
         </div>
       </div>
       <div class="pub-topbar" id="pub-topbar">
@@ -620,6 +699,20 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
       <span class="modal-title">🔗 Generar link de encuesta</span>
       <button class="modal-close" onclick="closeModal('m-gen-link')">✕</button>
     </div>
+    <div class="fg">
+      <label class="fl">Tipo de formulario *</label>
+      <select class="fi" id="gl-tipo" onchange="actualizarCuestionariosSelect()">
+        <option value="clima">🌡️ Clima Organizacional</option>
+        <option value="eval">📋 Evaluación de Desempeño</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Cuestionario (plantilla) *</label>
+      <select class="fi" id="gl-cuestionario" onchange="autoFillLinkFromCuest()">
+        <option value="">— Usar configuración global —</option>
+      </select>
+      <div style="font-size:.68rem;color:var(--muted);margin-top:3px;">Elige un cuestionario para usar su empresa, escala y preguntas configuradas, o deja "global" para usar la config general.</div>
+    </div>
     <div class="fr">
       <div class="fg">
         <label class="fl">Empresa / Organización *</label>
@@ -627,22 +720,16 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
         <datalist id="gl-empresa-list"></datalist>
       </div>
       <div class="fg">
-        <label class="fl">Tipo de formulario *</label>
-        <select class="fi" id="gl-tipo">
-          <option value="clima">🌡️ Clima Organizacional</option>
-          <option value="eval">📋 Evaluación de Desempeño</option>
-        </select>
+        <label class="fl">Período evaluado</label>
+        <input class="fi" id="gl-periodo" placeholder="Ej: Q2 2025, Julio 2025">
       </div>
     </div>
     <div class="fr">
       <div class="fg">
-        <label class="fl">Período evaluado</label>
-        <input class="fi" id="gl-periodo" placeholder="Ej: Q2 2025, Julio 2025">
-      </div>
-      <div class="fg">
         <label class="fl">Fecha de expiración (opcional)</label>
         <input class="fi" id="gl-expira" type="date">
       </div>
+      <div class="fg"></div>
     </div>
     <div class="fg">
       <label class="fl">Mensaje de bienvenida personalizado</label>
@@ -3660,24 +3747,485 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 
   if(empresa && tipo){
     // ── PARTICIPANT MODE ─────────────────────────────
-    // Load CFG from Supabase so form uses admin-configured dimensions
+    // Load CFG + CUESTIONARIOS from Supabase so form uses admin-configured content
     try {
-      const cfgRes = await _supaClient.from('irh_config').select('*').limit(1);
+      const [cfgRes, cuRes] = await Promise.all([
+        _supaClient.from('irh_config').select('*').limit(1),
+        _supaClient.from('irh_cuestionarios').select('*')
+      ]);
       if(cfgRes.data?.length && cfgRes.data[0].config_json){
         CFG = {...DEFAULT_CFG, ...cfgRes.data[0].config_json};
       }
-    } catch(e){ /* use DEFAULT_CFG */ }
-    // Activate participant panel (covers everything with position:fixed z-index:500)
+      if(cuRes.data?.length){
+        CUESTIONARIOS = cuRes.data.map(r=>({...r.data_json, _supaid:r.id}));
+        saveDB('irh_cuestionarios', CUESTIONARIOS);
+      }
+    } catch(e){ /* use local */ }
     detectarModoParticipante();
   } else {
     // ── ADMIN MODE ───────────────────────────────────
-    showLoginOverlay('login'); // show login immediately
+    showLoginOverlay('login');
     try {
       const { data: { session } } = await _supaClient.auth.getSession();
       if(session?.user){ currentUser=session.user; onLoginSuccess(session.user); }
     } catch(e){ /* stay on login screen */ }
   }
 });
+
+// ══════════════════════════════════════════════════════
+// CUESTIONARIOS (plantillas por módulo y empresa)
+// ══════════════════════════════════════════════════════
+let CUESTIONARIOS = loadDB('irh_cuestionarios', []);
+
+// Añadir a goPanel
+const _origGoPanel2 = goPanel;
+goPanel = function(id, el){
+  _origGoPanel2(id, el);
+  if(id==='co-cuestionarios') renderCuestionariosPanel('clima');
+  else if(id==='ed-cuestionarios') renderCuestionariosPanel('eval');
+};
+
+function renderCuestionariosPanel(tipo){
+  const grid = document.getElementById(tipo==='clima'?'co-cuest-grid':'ed-cuest-grid');
+  const empty = document.getElementById(tipo==='clima'?'co-cuest-empty':'ed-cuest-empty');
+  const list = CUESTIONARIOS.filter(c=>c.tipo===tipo);
+  if(!list.length){ grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  grid.innerHTML = list.map(c=>{
+    const icon = tipo==='clima'?'🌡️':'📋';
+    const label = tipo==='clima'?'Clima':'Evaluación';
+    const escala = c.escala||5;
+    const ndims = tipo==='clima'?(c.dimensiones||[]).length:(c.competencias||[]).length;
+    return `<div class="card" style="margin-bottom:0;">
+      <div class="card-header" style="gap:.5rem;">
+        <div style="flex:1;min-width:0;">
+          ${c.logo?`<img src="${c.logo}" style="height:26px;max-width:80px;object-fit:contain;margin-bottom:4px;display:block;" onerror="this.style.display='none'">`:'' }
+          <div style="font-weight:900;font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.nombre}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:1px;">${c.empresa||'—'}</div>
+        </div>
+        <span class="badge badge-purple">${icon} ${label}</span>
+      </div>
+      <div class="card-body" style="padding:.8rem 1.1rem;">
+        <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.7rem;font-size:.72rem;color:var(--muted);">
+          <span>📏 Escala 1–${escala}</span>
+          <span>·</span>
+          <span>${tipo==='clima'?`🔢 ${ndims} dimensión(es)`:`🔢 ${ndims} competencia(s)`}</span>
+          ${c.anonimato?`<span>· 🔒 ${c.anonimato==='siempre'?'Anónimo':c.anonimato==='opcional'?'Anon. opcional':'Identificado'}</span>`:''}
+          <span>· 📅 ${c.creado||'—'}</span>
+        </div>
+        ${c.descripcion?`<div style="font-size:.75rem;color:var(--muted);margin-bottom:.6rem;line-height:1.4;">"${c.descripcion.substring(0,90)}${c.descripcion.length>90?'…':''}"</div>`:''}
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="openCuestionarioModal('${tipo}','${c.id}')">✏️ Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="duplicarCuestionario('${c.id}')">📋 Duplicar</button>
+          <button class="btn btn-ghost btn-sm" onclick="openModalGenLinkFromCuest('${c.id}')">🔗 Crear link</button>
+          <button class="btn btn-danger btn-sm" onclick="eliminarCuestionario('${c.id}')">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openCuestionarioModal(tipo, id){
+  const isEdit = !!id;
+  let c = id ? CUESTIONARIOS.find(x=>x.id===id) : null;
+  if(!c && isEdit) return;
+  document.getElementById('m-cuest-tipo').value = tipo;
+  document.getElementById('m-cuest-id').value = id||'';
+  document.getElementById('m-cuest-title').textContent = (isEdit?'✏️ Editar':'📝 Nuevo')+' cuestionario — '+(tipo==='clima'?'Clima':'Evaluación');
+  document.getElementById('m-cuest-nombre').value = c?.nombre||'';
+  document.getElementById('m-cuest-empresa').value = c?.empresa||'';
+  document.getElementById('m-cuest-logo').value = c?.logo||'';
+  document.getElementById('m-cuest-escala').value = c?.escala||5;
+  document.getElementById('m-cuest-anonimato').value = c?.anonimato||'opcional';
+  document.getElementById('m-cuest-descripcion').value = c?.descripcion||'';
+  const logoPreview = document.getElementById('m-cuest-logo-preview');
+  if(c?.logo){ logoPreview.src=c.logo; logoPreview.style.display=''; } else { logoPreview.src=''; logoPreview.style.display='none'; }
+  // hide anon for eval
+  document.getElementById('m-cuest-anon-wrap').style.display = tipo==='clima'?'':'none';
+  // Render sections
+  const sec = document.getElementById('m-cuest-secciones');
+  if(tipo==='clima'){
+    const dims = c?.dimensiones || JSON.parse(JSON.stringify(DEFAULT_CFG.dimensiones));
+    renderCuestionarioDimsEditor(dims);
+  } else {
+    const comps = c?.competencias || JSON.parse(JSON.stringify(DEFAULT_CFG.competencias));
+    const objs  = c?.objetivos   || JSON.parse(JSON.stringify(DEFAULT_CFG.objetivos));
+    renderCuestionarioCompEditor(comps, objs);
+  }
+  openModal('m-cuestionario');
+}
+
+function previewLogo(){
+  const url = document.getElementById('m-cuest-logo')?.value;
+  const img = document.getElementById('m-cuest-logo-preview');
+  if(url){ img.src=url; img.style.display=''; img.onerror=()=>{ img.style.display='none'; }; }
+  else { img.style.display='none'; }
+}
+
+// --- DIMS EDITOR ---
+let _tmpDims = [];
+let _tmpComps = [];
+let _tmpObjs  = [];
+
+function renderCuestionarioDimsEditor(dims){
+  _tmpDims = dims;
+  const sec = document.getElementById('m-cuest-secciones');
+  sec.innerHTML = `
+    <div style="border-top:1.5px solid var(--border);margin:1rem 0 .5rem;padding-top:.8rem;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:.8rem;font-weight:800;">🔢 Dimensiones y preguntas</span>
+      <button class="btn btn-ghost btn-sm" onclick="addTmpDim()">+ Dimensión</button>
+    </div>
+    <div id="tmp-dims-cont">` + renderTmpDimsHTML() + `</div>`;
+}
+
+function renderTmpDimsHTML(){
+  return _tmpDims.map((d,di)=>`
+    <div style="border:1.5px solid var(--purple-mid);border-radius:var(--rs);margin-bottom:.8rem;overflow:hidden;">
+      <div style="background:var(--purple-pale);border-bottom:1px solid var(--purple-mid);padding:8px 12px;display:flex;align-items:center;gap:8px;">
+        <div class="dim-num">${di+1}</div>
+        <input value="${(d.titulo||'').replace(/"/g,'&quot;')}" style="flex:1;font-weight:800;font-size:.82rem;border:none;background:transparent;outline:none;font-family:'Nunito',sans-serif;" oninput="_tmpDims[${di}].titulo=this.value">
+        <input value="${(d.desc||'').replace(/"/g,'&quot;')}" style="flex:2;font-size:.75rem;border:none;background:transparent;outline:none;font-family:'Nunito',sans-serif;color:var(--muted);" oninput="_tmpDims[${di}].desc=this.value" placeholder="Descripción">
+        <button class="btn btn-danger btn-sm" onclick="_tmpDims.splice(${di},1);document.getElementById('tmp-dims-cont').innerHTML=renderTmpDimsHTML()">✕</button>
+      </div>
+      <div style="padding:10px 12px;">
+        ${(d.preguntas||[]).map((p,pi)=>`
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <span style="font-size:.65rem;font-weight:800;color:var(--muted);min-width:20px;">${pi+1}</span>
+            <input value="${(p||'').replace(/"/g,'&quot;')}" style="flex:1;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Nunito',sans-serif;font-size:.78rem;outline:none;" oninput="_tmpDims[${di}].preguntas[${pi}]=this.value">
+            <button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.85rem;" onclick="_tmpDims[${di}].preguntas.splice(${pi},1);document.getElementById('tmp-dims-cont').innerHTML=renderTmpDimsHTML()">✕</button>
+          </div>`).join('')}
+        <button class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="_tmpDims[${di}].preguntas.push('Nueva pregunta');document.getElementById('tmp-dims-cont').innerHTML=renderTmpDimsHTML()">+ Pregunta</button>
+      </div>
+    </div>`).join('');
+}
+
+function addTmpDim(){
+  _tmpDims.push({titulo:'Nueva dimensión',desc:'Descripción',preguntas:['Nueva pregunta']});
+  document.getElementById('tmp-dims-cont').innerHTML=renderTmpDimsHTML();
+}
+
+function renderCuestionarioCompEditor(comps, objs){
+  _tmpComps = comps;
+  _tmpObjs  = objs;
+  const sec = document.getElementById('m-cuest-secciones');
+  sec.innerHTML = `
+    <div style="border-top:1.5px solid var(--border);margin:1rem 0 .5rem;padding-top:.8rem;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:.8rem;font-weight:800;">🏅 Competencias y preguntas</span>
+      <button class="btn btn-ghost btn-sm" onclick="addTmpComp()">+ Competencia</button>
+    </div>
+    <div id="tmp-comps-cont">` + renderTmpCompsHTML() + `</div>
+    <div style="border-top:1.5px solid var(--border);margin:1rem 0 .5rem;padding-top:.8rem;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:.8rem;font-weight:800;">🎯 Objetivos</span>
+      <button class="btn btn-ghost btn-sm" onclick="addTmpObj()">+ Objetivo</button>
+    </div>
+    <div id="tmp-objs-cont">` + renderTmpObjsHTML() + `</div>`;
+}
+
+function renderTmpCompsHTML(){
+  return _tmpComps.map((c,ci)=>`
+    <div style="border:1.5px solid var(--purple-mid);border-radius:var(--rs);margin-bottom:.8rem;overflow:hidden;">
+      <div style="background:var(--purple-pale);border-bottom:1px solid var(--purple-mid);padding:8px 12px;display:flex;align-items:center;gap:8px;">
+        <div class="dim-num">${ci+1}</div>
+        <input value="${(c.titulo||'').replace(/"/g,'&quot;')}" style="flex:1;font-weight:800;font-size:.82rem;border:none;background:transparent;outline:none;font-family:'Nunito',sans-serif;" oninput="_tmpComps[${ci}].titulo=this.value">
+        <input value="${(c.desc||'').replace(/"/g,'&quot;')}" style="flex:2;font-size:.75rem;border:none;background:transparent;outline:none;font-family:'Nunito',sans-serif;color:var(--muted);" oninput="_tmpComps[${ci}].desc=this.value" placeholder="Descripción">
+        <button class="btn btn-danger btn-sm" onclick="_tmpComps.splice(${ci},1);document.getElementById('tmp-comps-cont').innerHTML=renderTmpCompsHTML()">✕</button>
+      </div>
+      <div style="padding:10px 12px;">
+        ${(c.preguntas||[]).map((p,pi)=>`
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <span style="font-size:.65rem;font-weight:800;color:var(--muted);min-width:20px;">${pi+1}</span>
+            <input value="${(p||'').replace(/"/g,'&quot;')}" style="flex:1;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Nunito',sans-serif;font-size:.78rem;outline:none;" oninput="_tmpComps[${ci}].preguntas[${pi}]=this.value">
+            <button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.85rem;" onclick="_tmpComps[${ci}].preguntas.splice(${pi},1);document.getElementById('tmp-comps-cont').innerHTML=renderTmpCompsHTML()">✕</button>
+          </div>`).join('')}
+        <button class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="_tmpComps[${ci}].preguntas.push('Nueva pregunta');document.getElementById('tmp-comps-cont').innerHTML=renderTmpCompsHTML()">+ Pregunta</button>
+      </div>
+    </div>`).join('');
+}
+
+function addTmpComp(){
+  _tmpComps.push({titulo:'Nueva competencia',desc:'',preguntas:['Nueva pregunta']});
+  document.getElementById('tmp-comps-cont').innerHTML=renderTmpCompsHTML();
+}
+
+function renderTmpObjsHTML(){
+  return _tmpObjs.map((o,oi)=>`
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;">
+      <span style="font-size:.65rem;font-weight:800;color:var(--muted);min-width:20px;">${oi+1}</span>
+      <input value="${(o.titulo||'').replace(/"/g,'&quot;')}" style="flex:1;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Nunito',sans-serif;font-size:.78rem;outline:none;" oninput="_tmpObjs[${oi}].titulo=this.value" placeholder="Título del objetivo">
+      <input value="${o.peso||0}" style="width:60px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Nunito',sans-serif;font-size:.78rem;outline:none;text-align:center;" oninput="_tmpObjs[${oi}].peso=parseInt(this.value)||0" type="number" min="0" max="100" title="Peso %">
+      <span style="font-size:.72rem;color:var(--muted);">%</span>
+      <button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.85rem;" onclick="_tmpObjs.splice(${oi},1);document.getElementById('tmp-objs-cont').innerHTML=renderTmpObjsHTML()">✕</button>
+    </div>`).join('');
+}
+
+function addTmpObj(){
+  _tmpObjs.push({titulo:'Nuevo objetivo',peso:0});
+  document.getElementById('tmp-objs-cont').innerHTML=renderTmpObjsHTML();
+}
+
+function guardarCuestionario(){
+  const tipo   = document.getElementById('m-cuest-tipo').value;
+  const editId = document.getElementById('m-cuest-id').value;
+  const nombre = document.getElementById('m-cuest-nombre').value.trim();
+  const empresa= document.getElementById('m-cuest-empresa').value.trim();
+  if(!nombre||!empresa){ showToast('Nombre y empresa son obligatorios','error'); return; }
+
+  const entry = {
+    id: editId || String(Date.now()),
+    tipo, nombre, empresa,
+    logo: document.getElementById('m-cuest-logo').value.trim(),
+    escala: parseInt(document.getElementById('m-cuest-escala').value)||5,
+    anonimato: tipo==='clima'?document.getElementById('m-cuest-anonimato').value:'opcional',
+    descripcion: document.getElementById('m-cuest-descripcion').value.trim(),
+    creado: editId ? (CUESTIONARIOS.find(c=>c.id===editId)?.creado||new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]
+  };
+  if(tipo==='clima'){
+    entry.dimensiones = JSON.parse(JSON.stringify(_tmpDims));
+  } else {
+    entry.competencias = JSON.parse(JSON.stringify(_tmpComps));
+    entry.objetivos    = JSON.parse(JSON.stringify(_tmpObjs));
+  }
+
+  if(editId){
+    const idx = CUESTIONARIOS.findIndex(c=>c.id===editId);
+    if(idx>=0){ CUESTIONARIOS[idx]={...CUESTIONARIOS[idx],...entry}; }
+    else { CUESTIONARIOS.push(entry); }
+  } else {
+    CUESTIONARIOS.push(entry);
+  }
+  saveDB('irh_cuestionarios', CUESTIONARIOS);
+  saveCuestionarioToSupabase(CUESTIONARIOS.find(c=>c.id===entry.id));
+  closeModal('m-cuestionario');
+  renderCuestionariosPanel(tipo);
+  showToast('✅ Cuestionario guardado', 'success');
+}
+
+function duplicarCuestionario(id){
+  const orig = CUESTIONARIOS.find(c=>c.id===id);
+  if(!orig) return;
+  const copia = JSON.parse(JSON.stringify(orig));
+  copia.id = String(Date.now());
+  copia.nombre = 'Copia de ' + copia.nombre;
+  copia.creado = new Date().toISOString().split('T')[0];
+  delete copia._supaid;
+  CUESTIONARIOS.push(copia);
+  saveDB('irh_cuestionarios', CUESTIONARIOS);
+  saveCuestionarioToSupabase(copia);
+  renderCuestionariosPanel(orig.tipo);
+  showToast('✅ Cuestionario duplicado', 'success');
+}
+
+function eliminarCuestionario(id){
+  if(!confirm('¿Eliminar este cuestionario? Los links y respuestas existentes no se verán afectados.')) return;
+  const c = CUESTIONARIOS.find(x=>x.id===id);
+  if(c?._supaid) deleteCuestionarioFromSupabase(c._supaid);
+  CUESTIONARIOS = CUESTIONARIOS.filter(c=>c.id!==id);
+  saveDB('irh_cuestionarios', CUESTIONARIOS);
+  renderCuestionariosPanel(c?.tipo||'clima');
+  showToast('Cuestionario eliminado');
+}
+
+function openModalGenLinkFromCuest(cuestionarioId){
+  const c = CUESTIONARIOS.find(x=>x.id===cuestionarioId);
+  if(!c) return;
+  openModal('m-gen-link');
+  setTimeout(()=>{
+    document.getElementById('gl-tipo').value = c.tipo==='eval'?'eval':'clima';
+    actualizarCuestionariosSelect();
+    setTimeout(()=>{
+      document.getElementById('gl-cuestionario').value = cuestionarioId;
+      autoFillLinkFromCuest();
+    }, 50);
+  }, 50);
+}
+
+function actualizarCuestionariosSelect(){
+  const tipo = document.getElementById('gl-tipo')?.value;
+  const sel = document.getElementById('gl-cuestionario');
+  const list = CUESTIONARIOS.filter(c=>c.tipo===tipo);
+  sel.innerHTML = '<option value="">— Usar configuración global —</option>' +
+    list.map(c=>`<option value="${c.id}">${c.nombre} (${c.empresa})</option>`).join('');
+}
+
+function autoFillLinkFromCuest(){
+  const cuestId = document.getElementById('gl-cuestionario')?.value;
+  if(!cuestId) return;
+  const c = CUESTIONARIOS.find(x=>x.id===cuestId);
+  if(!c) return;
+  document.getElementById('gl-empresa').value = c.empresa||'';
+  if(c.descripcion) document.getElementById('gl-mensaje').value = c.descripcion;
+}
+
+// Patch renderLinksPanel to populate cuestionario select when modal opens
+const _origOpenModal = openModal;
+openModal = function(id){
+  _origOpenModal(id);
+  if(id==='m-gen-link') actualizarCuestionariosSelect();
+};
+
+// --- Supabase CUESTIONARIOS ---
+async function saveCuestionarioToSupabase(entry){
+  if(!_supaClient) return;
+  try {
+    if(entry._supaid){
+      await _supaClient.from('irh_cuestionarios').update({data_json:entry}).eq('id',entry._supaid);
+    } else {
+      const {data} = await _supaClient.from('irh_cuestionarios').insert({data_json:entry}).select().single();
+      if(data){ entry._supaid=data.id; saveDB('irh_cuestionarios',CUESTIONARIOS); }
+    }
+  } catch(err){ console.warn('saveCuest:', err.message); }
+}
+
+async function deleteCuestionarioFromSupabase(supaid){
+  if(!_supaClient||!supaid) return;
+  try { await _supaClient.from('irh_cuestionarios').delete().eq('id',supaid); } catch(e){}
+}
+
+// --- Supabase LINKS sync ---
+async function saveLinksToSupabase(){
+  if(!_supaClient||!currentUser) return;
+  try {
+    // upsert all links into a single config row for simplicity
+    const existing = await _supaClient.from('irh_links_store').select('id').limit(1);
+    const payload = { links_json: LINKS, updated_at: new Date().toISOString() };
+    if(existing.data?.length){
+      await _supaClient.from('irh_links_store').update(payload).eq('id', existing.data[0].id);
+    } else {
+      await _supaClient.from('irh_links_store').insert(payload);
+    }
+  } catch(err){ console.warn('saveLinks:', err.message); }
+}
+
+async function loadLinksFromSupabase(){
+  if(!_supaClient) return;
+  try {
+    const res = await _supaClient.from('irh_links_store').select('*').limit(1);
+    if(res.data?.length && res.data[0].links_json){
+      LINKS = res.data[0].links_json;
+      saveDB('irh_links', LINKS);
+    }
+  } catch(err){ console.warn('loadLinks:', err.message); }
+}
+
+// Patch generarLink to sync LINKS to Supabase
+const _origGenLink = generarLink;
+generarLink = async function(){
+  const tipo    = document.getElementById('gl-tipo')?.value;
+  const empresa = document.getElementById('gl-empresa')?.value?.trim();
+  const periodo = document.getElementById('gl-periodo')?.value||'';
+  const expira  = document.getElementById('gl-expira')?.value||'';
+  const mensaje = document.getElementById('gl-mensaje')?.value||'';
+  const cuestId = document.getElementById('gl-cuestionario')?.value||'';
+  if(!empresa){ showToast('El nombre de la empresa es obligatorio','error'); return; }
+
+  const token = Math.random().toString(36).substring(2,10).toUpperCase();
+  const slug  = empresa.toLowerCase()
+                  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+                  .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+
+  const entry = { id:Date.now(), empresa, tipo, periodo, expira, mensaje, token, slug,
+                  cuestionarioId: cuestId||null,
+                  creado: new Date().toISOString().split('T')[0], usos:0 };
+  LINKS.push(entry);
+  saveDB('irh_links', LINKS);
+  await saveLinksToSupabase();
+  closeModal('m-gen-link');
+  ['gl-empresa','gl-periodo','gl-expira','gl-mensaje'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  renderLinksPanel();
+  setTimeout(()=>verLink(entry.id), 200);
+  showToast('✅ Link generado','success');
+};
+
+// Patch eliminarLink to sync
+const _origEliminarLink = eliminarLink;
+eliminarLink = function(id){
+  if(!confirm('¿Eliminar este link? Los formularios ya enviados no se verán afectados.')) return;
+  LINKS = LINKS.filter(l=>l.id!==id);
+  saveDB('irh_links', LINKS);
+  saveLinksToSupabase();
+  renderLinksPanel();
+  showToast('Link eliminado');
+};
+
+// ── Override participant mode to load cuestionario config ──────────────
+const _origDetectarModo = detectarModoParticipante;
+detectarModoParticipante = function(){
+  const params = new URLSearchParams(window.location.search);
+  const empresa = params.get('empresa');
+  const tipo    = params.get('tipo');
+  if(!empresa || !tipo) return false;
+  const token   = params.get('token')||'';
+  const periodo = params.get('periodo')||'';
+
+  // Find link record from localStorage (loaded from Supabase during init)
+  const linkRecord = LINKS.find(l=>l.token===token);
+  if(linkRecord){
+    if(linkRecord.expira && linkRecord.expira < new Date().toISOString().split('T')[0]){
+      mostrarExpired(empresa); return true;
+    }
+    linkRecord.usos = (linkRecord.usos||0)+1;
+    saveDB('irh_links', LINKS);
+    // Load cuestionario-specific config if set
+    if(linkRecord.cuestionarioId){
+      const cuest = CUESTIONARIOS.find(c=>c.id===linkRecord.cuestionarioId);
+      if(cuest){
+        if(tipo==='clima'){
+          if(cuest.dimensiones?.length) CFG.dimensiones = cuest.dimensiones;
+        } else {
+          if(cuest.competencias?.length) CFG.competencias = cuest.competencias;
+          if(cuest.objetivos?.length)    CFG.objetivos    = cuest.objetivos;
+        }
+        if(cuest.escala)     CFG.escala = cuest.escala;
+        if(cuest.anonimato)  CFG.anonimato = cuest.anonimato;
+        // Store cuest data for branding
+        pubCuestionario = cuest;
+      }
+    }
+  }
+
+  pubLinkData = { empresa, tipo, periodo, token, mensaje: linkRecord?.mensaje||'' };
+  activarModoParticipante();
+  return true;
+};
+
+let pubCuestionario = null;
+
+// Patch activarModoParticipante to show logo/branding from cuestionario
+const _origActivarModo = activarModoParticipante;
+activarModoParticipante = function(){
+  _origActivarModo();
+  // Apply cuestionario branding
+  if(pubCuestionario?.logo){
+    const logoWrap = document.getElementById('pub-logo-wrap');
+    const logoImg  = document.getElementById('pub-logo-img');
+    const brandName= document.getElementById('pub-brand-name');
+    if(logoWrap && logoImg){
+      logoImg.src = pubCuestionario.logo;
+      logoWrap.style.display = '';
+      if(brandName) brandName.innerHTML = pubCuestionario.empresa || 'IntraRH<em>ecursos</em>';
+    }
+    const brandSub = document.getElementById('pub-brand-sub');
+    if(brandSub) brandSub.textContent = pubCuestionario.nombre||'';
+  }
+};
+
+// Patch loadDataFromSupabase to also load links and cuestionarios
+const _origLoadData = loadDataFromSupabase;
+loadDataFromSupabase = async function(){
+  await _origLoadData();
+  await loadLinksFromSupabase();
+  // Load cuestionarios
+  if(_supaClient && currentUser){
+    try {
+      const cuRes = await _supaClient.from('irh_cuestionarios').select('*');
+      if(cuRes.data?.length){
+        CUESTIONARIOS = cuRes.data.map(r=>({...r.data_json, _supaid:r.id}));
+        saveDB('irh_cuestionarios', CUESTIONARIOS);
+      }
+    } catch(e){ console.warn('loadCuest:', e.message); }
+  }
+};
+
 </script>
 </body>
 </html>
