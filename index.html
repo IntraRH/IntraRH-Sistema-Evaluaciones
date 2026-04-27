@@ -28,7 +28,7 @@
   --r:14px;--rs:8px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;display:flex;}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
 
 /* ══════════════════════════════════════════════════════
    SIDEBAR
@@ -49,8 +49,9 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 /* ══════════════════════════════════════════════════════
    MAIN
 ══════════════════════════════════════════════════════ */
-.main{margin-left:220px;flex:1;padding:2rem 2.2rem;min-height:100vh;}
+.main{margin-left:220px;padding:1.5rem 2.2rem;padding-top:calc(44px + 1.5rem);min-height:100vh;}
 .panel{display:none;animation:fadeIn .2s ease;}
+.auth-hide{visibility:hidden;}
 .panel.active{display:block;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
@@ -312,7 +313,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 .sp-login-note{margin-top:1.2rem;font-size:.7rem;color:var(--muted);line-height:1.6;}
 .sp-login-error{margin-top:.9rem;padding:.6rem .9rem;background:var(--red-pale);border-left:3px solid var(--red);border-radius:0 var(--rs) var(--rs) 0;font-size:.75rem;color:var(--red);display:none;text-align:left;}
 /* USER BAR */
-.sp-user-bar{display:none;background:var(--purple-pale);border-bottom:1px solid var(--purple-mid);padding:.5rem 1.4rem;align-items:center;gap:.8rem;}
+.sp-user-bar{display:none;position:fixed;top:0;left:220px;right:0;background:var(--purple-pale);border-bottom:1px solid var(--purple-mid);padding:.45rem 1.4rem;align-items:center;gap:.8rem;z-index:90;}
 .sp-user-bar.vis{display:flex;}
 .sp-avatar{width:30px;height:30px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;flex-shrink:0;}
 .sp-user-name{font-size:.8rem;font-weight:800;color:var(--text);}
@@ -338,7 +339,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
   .g4{grid-template-columns:repeat(2,1fr);}
   .kpi-val{font-size:1.5rem;}
   .ph-title{font-size:1.25rem;}
-  .sp-user-bar{padding:.45rem 1rem;gap:.55rem;flex-wrap:wrap;}
+  .sp-user-bar{left:200px;padding:.45rem 1rem;gap:.55rem;}
   .sp-sync-status{margin-left:0;}
   .export-toolbar{gap:.35rem;}
   .btn-export{font-size:.65rem;padding:.22rem .5rem;}
@@ -490,7 +491,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 <!-- ══════════════════════════════════════════
      SIDEBAR
 ══════════════════════════════════════════ -->
-<div class="sidebar" style="visibility:hidden;">
+<div class="sidebar auth-hide">
   <div class="sidebar-logo">
     <div class="logo-text">Intra<em>RH</em>ecursos</div>
     <div class="logo-sub">Sistema de Evaluaciones</div>
@@ -518,7 +519,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 <!-- ══════════════════════════════════════════
      MAIN AREA
 ══════════════════════════════════════════ -->
-<div class="main" style="visibility:hidden;">
+<div class="main auth-hide">
 
 <!-- ─── LINKS DE ENCUESTA ─── -->
 <div id="panel-links" class="panel">
@@ -3475,8 +3476,9 @@ async function onLoginSuccess(user){
 
 function showLoginOverlay(mode){
   document.getElementById('sp-login-overlay').classList.add('vis');
-  document.querySelector('.sidebar').style.visibility='hidden';
-  document.querySelector('.main').style.visibility='hidden';
+  document.querySelector('.sidebar').classList.add('auth-hide');
+  document.querySelector('.main').classList.add('auth-hide');
+  document.getElementById('sp-user-bar').style.visibility='hidden';
   if(mode==='setup'){
     document.getElementById('sp-login-desc').textContent='Error de configuración. Contacta al administrador.';
     document.getElementById('btn-ms-login').disabled=true;
@@ -3484,8 +3486,9 @@ function showLoginOverlay(mode){
 }
 function hideLoginOverlay(){
   document.getElementById('sp-login-overlay').classList.remove('vis');
-  document.querySelector('.sidebar').style.visibility='';
-  document.querySelector('.main').style.visibility='';
+  document.querySelector('.sidebar').classList.remove('auth-hide');
+  document.querySelector('.main').classList.remove('auth-hide');
+  document.getElementById('sp-user-bar').style.visibility='';
 }
 function showLoginError(msg){
   const el=document.getElementById('sp-login-error');
