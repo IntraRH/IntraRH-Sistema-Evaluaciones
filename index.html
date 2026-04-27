@@ -1225,6 +1225,7 @@ function destroyChart(id){
 
 // -- DASHBOARD --
 function renderDashboard(){
+  if(!document.getElementById("panel-dashboard")) return;
   const totalColab = COLABORADORES.length;
   const coCount = CO_RESP.length;
   const edCount = ED_RESP.length;
@@ -1269,7 +1270,7 @@ function renderDashboard(){
     });
   } else {
     const ctx=document.getElementById('chart-dash-clima');
-    ctx.parentElement.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-size:.8rem;">Sin datos de clima aún</div>';
+    if(ctx&&ctx.parentElement) ctx.parentElement.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-size:.8rem;">Sin datos de clima aún</div>';
   }
 
   // Gráfico ED por clasificación
@@ -1284,7 +1285,7 @@ function renderDashboard(){
     });
   } else {
     const ctx=document.getElementById('chart-dash-ed');
-    if(ctx) ctx.parentElement.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-size:.8rem;">Sin datos de evaluación aún</div>';
+    if(ctx&&ctx.parentElement) ctx.parentElement.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-size:.8rem;">Sin datos de evaluación aún</div>';
   }
 }
 
@@ -3349,7 +3350,7 @@ async function onLoginSuccess(user){
   setSyncStatus('syncing','Cargando datos…');
   await loadDataFromSupabase();
   setSyncStatus('ok','Sincronizado · '+new Date().toLocaleTimeString('es-DO'));
-  renderDashboard();
+  setTimeout(()=>{ document.getElementById("panel-dashboard").classList.add("active"); renderDashboard(); }, 50);
 }
 
 function showLoginOverlay(mode){
