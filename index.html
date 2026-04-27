@@ -2098,7 +2098,9 @@ let msalAccount  = null;
 let SP_SITE_ID   = null;
 
 // -- MSAL INIT --───────────────────────────────
-function initMSAL(){
+let msalReady = false;
+
+async function initMSAL(){
   const clientId = CFG.sp_clientid||'';
   const tenantId = CFG.sp_tenantid||'';
   const redirect = CFG.sp_redirecturi||(window.location.origin+window.location.pathname);
@@ -2109,17 +2111,16 @@ function initMSAL(){
       cache:{ cacheLocation:'sessionStorage', storeAuthStateInCookie:false }
     };
     msalInstance = new msal.PublicClientApplication(msalConfig);
-    msalInstance.initialize().then(()=>{
-      msalInstance.handleRedirectPromise().then(resp=>{
-        if(resp&&resp.account){ msalAccount=resp.account; onLoginSuccess(resp.account); }
-        else {
-          const accounts=msalInstance.getAllAccounts();
-          if(accounts.length>0){ msalAccount=accounts[0]; onLoginSuccess(accounts[0]); }
-          else showLoginOverlay('login');
-        }
-      }).catch(err=>{ showLoginError(err.message); showLoginOverlay('login'); });
-    });
-  } catch(err){ showLoginOverlay('setup'); console.error('MSAL:',err); }
+    await msalInstance.initialize();
+    msalReady = true;
+    try {
+      const resp = await msalInstance.handleRedirectPromise();
+      if(resp&&resp.account){ msalAccount=resp.account; onLoginSuccess(resp.account); return; }
+    } catch(e){ console.warn('handleRedirect:',e.message); }
+    const accounts = msalInstance.getAllAccounts();
+    if(accounts.length>0){ msalAccount=accounts[0]; onLoginSuccess(accounts[0]); }
+    else showLoginOverlay('login');
+  } catch(err){ showLoginOverlay('setup'); console.error('MSAL init error:',err); }
 }
 
 function showLoginOverlay(mode){
@@ -2142,7 +2143,7 @@ function showLoginError(msg){
 }
 
 async function msLogin(){
-  if(!msalInstance){ showLoginError('MSAL no inicializado. Revisa Client ID y Tenant ID.'); return; }
+  if(!msalReady){ showLoginError("MSAL aún inicializando, espera un momento e intenta de nuevo."); return; }
   const btn=document.getElementById('btn-ms-login');
   btn.disabled=true; btn.textContent='Conectando...';
   try{
