@@ -543,7 +543,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 </div>
 
 <!-- ─── MODO PARTICIPANTE (pantalla completa sin sidebar) ─── -->
-<div id="panel-participante" class="panel" style="display:none;position:fixed;inset:0;z-index:500;background:var(--bg);overflow-y:auto;">
+<div id="panel-participante" style="display:none;position:fixed;inset:0;z-index:500;background:var(--bg);overflow-y:auto;">
   <div class="pub-form-wrap">
     <div class="pub-welcome" id="pub-welcome-card">
       <div class="pub-welcome-header">
@@ -2413,15 +2413,15 @@ function mostrarExpired(empresa){
 }
 
 function activarModoParticipante(){
-  // Hide sidebar and main, show participante panel
-  const sb = document.querySelector('.sidebar');
-  const mn = document.querySelector('.main');
-  sb.classList.remove('auth-hide'); sb.style.display='none';
-  mn.classList.remove('auth-hide'); mn.style.display='none';
-  document.getElementById('sp-user-bar').style.display='none';
-  document.getElementById('menu-toggle').style.display='none';
+  // Show participant panel fullscreen - it's position:fixed z-index:500 so covers everything
   const panel = document.getElementById('panel-participante');
-  panel.style.display='block';
+  panel.style.cssText = 'display:block !important;position:fixed;inset:0;z-index:500;background:var(--bg);overflow-y:auto;';
+  // Also hide admin UI for cleanliness
+  try { document.querySelector('.sidebar').style.visibility='hidden'; } catch(e){}
+  try { document.querySelector('.main').style.visibility='hidden'; } catch(e){}
+  try { document.getElementById('sp-user-bar').style.display='none'; } catch(e){}
+  try { document.getElementById('menu-toggle').style.display='none'; } catch(e){}
+  try { document.getElementById('sp-login-overlay').classList.remove('vis'); } catch(e){}
 
   const { empresa, tipo, periodo, mensaje } = pubLinkData;
   const escala = parseInt(CFG.escala)||5;
@@ -3655,21 +3655,27 @@ goPanel = function(id, el){
 document.addEventListener('DOMContentLoaded', async ()=>{
   initSupabase();
   const params = new URLSearchParams(window.location.search);
-  const esParticipante = params.get('empresa') && params.get('tipo');
-  if(esParticipante){
-    // Participant mode: load CFG from Supabase first, then activate form
-    document.querySelector('.sidebar').classList.remove('auth-hide');
-    document.querySelector('.main').classList.remove('auth-hide');
+  const empresa = params.get('empresa');
+  const tipo = params.get('tipo');
+
+  if(empresa && tipo){
+    // ── PARTICIPANT MODE ─────────────────────────────
+    // Load CFG from Supabase so form uses admin-configured dimensions
     try {
       const cfgRes = await _supaClient.from('irh_config').select('*').limit(1);
-      if(cfgRes.data?.length){ CFG = {...DEFAULT_CFG, ...cfgRes.data[0].config_json}; }
-    } catch(e){ console.warn('Could not load CFG for participant:', e.message); }
+      if(cfgRes.data?.length && cfgRes.data[0].config_json){
+        CFG = {...DEFAULT_CFG, ...cfgRes.data[0].config_json};
+      }
+    } catch(e){ /* use DEFAULT_CFG */ }
+    // Activate participant panel (covers everything with position:fixed z-index:500)
     detectarModoParticipante();
   } else {
-    // Admin mode: check session
-    const { data: { session } } = await _supaClient.auth.getSession();
-    if(session?.user){ currentUser=session.user; onLoginSuccess(session.user); }
-    else showLoginOverlay('login');
+    // ── ADMIN MODE ───────────────────────────────────
+    showLoginOverlay('login'); // show login immediately
+    try {
+      const { data: { session } } = await _supaClient.auth.getSession();
+      if(session?.user){ currentUser=session.user; onLoginSuccess(session.user); }
+    } catch(e){ /* stay on login screen */ }
   }
 });
 </script>
