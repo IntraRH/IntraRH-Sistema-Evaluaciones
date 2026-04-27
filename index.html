@@ -3501,7 +3501,7 @@ function showLoginError(msg){
 function setSyncStatus(state,msg){
   const dot=document.getElementById('sp-sync-dot');
   const msgEl=document.getElementById('sp-sync-msg');
-  dot.className='sp-sync-dot'+(state==='syncing'?' syncing':state==='error'?' error':'');
+  if(dot) dot.className='sp-sync-dot'+(state==='syncing'?' syncing':state==='error'?' error':'');
   if(msgEl) msgEl.textContent=msg;
 }
 
@@ -3532,7 +3532,7 @@ function sparseSupa(row){
 
 // ── SAVE TO SUPABASE ──────────────────────────────────
 async function saveToSupabase(table, entry){
-  if(!_supaClient||!currentUser){ return; }
+  if(!_supaClient){ return; } // participants can save without being logged in
   try {
     setSyncStatus('syncing','Guardando…');
     if(entry._supaid){
@@ -3644,11 +3644,17 @@ goPanel = function(id, el){
 // -- INIT --
 document.addEventListener('DOMContentLoaded', async ()=>{
   initSupabase();
-  const esParticipante = detectarModoParticipante();
+  const params = new URLSearchParams(window.location.search);
+  const esParticipante = params.get('empresa') && params.get('tipo');
   if(esParticipante){
-    // Participant mode: remove auth-hide so activarModoParticipante can work
+    // Participant mode: load CFG from Supabase first, then activate form
     document.querySelector('.sidebar').classList.remove('auth-hide');
     document.querySelector('.main').classList.remove('auth-hide');
+    try {
+      const cfgRes = await _supaClient.from('irh_config').select('*').limit(1);
+      if(cfgRes.data?.length){ CFG = {...DEFAULT_CFG, ...cfgRes.data[0].config_json}; }
+    } catch(e){ console.warn('Could not load CFG for participant:', e.message); }
+    detectarModoParticipante();
   } else {
     // Admin mode: check session
     const { data: { session } } = await _supaClient.auth.getSession();
