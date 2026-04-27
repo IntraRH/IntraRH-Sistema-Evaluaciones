@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js"></script>
 <!-- Export libraries -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -2105,22 +2105,46 @@ async function initMSAL(){
   const tenantId = CFG.sp_tenantid||'';
   const redirect = CFG.sp_redirecturi||(window.location.origin+window.location.pathname);
   if(!clientId||!tenantId){ showLoginOverlay('setup'); return; }
+
+  // Check if MSAL library loaded — supports v2 (msal.PublicClientApplication) and v3 (window.msalBrowser or PublicClientApplication)
+  const PCA = (typeof msal !== 'undefined' && msal.PublicClientApplication)
+              ? msal.PublicClientApplication
+              : (typeof PublicClientApplication !== 'undefined' ? PublicClientApplication : null);
+
+  if(!PCA){
+    showLoginOverlay('login');
+    showLoginError('La librería MSAL no cargó. Verifica tu conexión a internet y recarga la página.');
+    return;
+  }
+
   try {
     const msalConfig = {
       auth:{ clientId, authority:'https://login.microsoftonline.com/'+tenantId, redirectUri:redirect },
       cache:{ cacheLocation:'sessionStorage', storeAuthStateInCookie:false }
     };
-    msalInstance = new msal.PublicClientApplication(msalConfig);
-    await msalInstance.initialize();
+    msalInstance = new PCA(msalConfig);
+
+    // initialize() exists in v3; v2 doesn't need it
+    if(typeof msalInstance.initialize === 'function'){
+      await msalInstance.initialize();
+    }
+
     msalReady = true;
+
     try {
       const resp = await msalInstance.handleRedirectPromise();
       if(resp&&resp.account){ msalAccount=resp.account; onLoginSuccess(resp.account); return; }
     } catch(e){ console.warn('handleRedirect:',e.message); }
+
     const accounts = msalInstance.getAllAccounts();
     if(accounts.length>0){ msalAccount=accounts[0]; onLoginSuccess(accounts[0]); }
     else showLoginOverlay('login');
-  } catch(err){ showLoginOverlay('setup'); console.error('MSAL init error:',err); }
+
+  } catch(err){
+    showLoginOverlay('login');
+    showLoginError('Error al inicializar MSAL: '+err.message);
+    console.error('MSAL init error:',err);
+  }
 }
 
 function showLoginOverlay(mode){
