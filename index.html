@@ -377,7 +377,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 <!-- ══════════════════════════════════════════
      SIDEBAR
 ══════════════════════════════════════════ -->
-<div class="sidebar">
+<div class="sidebar" style="visibility:hidden;">
   <div class="sidebar-logo">
     <div class="logo-text">Intra<em>RH</em>ecursos</div>
     <div class="logo-sub">Sistema de Evaluaciones</div>
@@ -405,7 +405,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 <!-- ══════════════════════════════════════════
      MAIN AREA
 ══════════════════════════════════════════ -->
-<div class="main">
+<div class="main" style="visibility:hidden;">
 
 <!-- ─── LINKS DE ENCUESTA ─── -->
 <div id="panel-links" class="panel">
@@ -921,37 +921,23 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
       </div>
     </div>
 
-    <!-- INTEGRACIÓN SHAREPOINT -->
+    <!-- INTEGRACIÓN SUPABASE -->
     <div class="card">
-      <div class="card-header"><span class="card-title">🏢 Integración SharePoint</span></div>
+      <div class="card-header"><span class="card-title">🗄️ Base de datos (Supabase)</span></div>
       <div class="card-body">
-        <div class="nota">⚠️ Configura estos valores con los datos de tu app registrada en Azure AD. Sin esto el sistema funciona en modo local (localStorage).</div>
+        <div class="nota-blue">✅ El sistema está conectado a Supabase. Los datos se sincronizan automáticamente en cada acción.</div>
         <div class="fr">
-          <div class="fg">
-            <label class="fl">Client ID (Application ID) <span style="color:var(--red);">*</span></label>
-            <input class="fi" id="cfg-sp-clientid" placeholder="6871e2ef-7b77-4d06-85da-4f0cbfe5048b">
-          </div>
-          <div class="fg">
-            <label class="fl">Tenant ID (Directory ID) <span style="color:var(--red);">*</span></label>
-            <input class="fi" id="cfg-sp-tenantid" placeholder="4284bfb0-ce63-4ea4-ad17-fc885651b512">
-          </div>
-        </div>
-        <div class="fg">
-          <label class="fl">URL del sitio SharePoint</label>
-          <input class="fi" id="cfg-sp-siteurl" value="https://intrarhecursos.sharepoint.com/sites/INTRARHECURSOS">
-        </div>
-        <div class="fg">
-          <label class="fl">Redirect URI (URL donde está alojado este HTML)</label>
-          <input class="fi" id="cfg-sp-redirecturi" placeholder="https://intrarhecursos.sharepoint.com/sites/INTRARHECURSOS/SiteAssets/IntraRH-Sistema-Evaluaciones.html">
+          <div class="fg"><label class="fl">Project URL</label><input class="fi" value="https://gmnnamzexjlvrfksnqev.supabase.co" readonly style="background:var(--bg);color:var(--muted);"></div>
+          <div class="fg"><label class="fl">Estado</label><input class="fi" value="✅ Conectado" readonly style="background:var(--bg);color:var(--green);font-weight:800;"></div>
         </div>
         <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.4rem;">
-          <button class="btn btn-ghost btn-sm" onclick="probarSharePoint()">🧪 Probar conexión</button>
-          <button class="btn btn-ghost btn-sm" onclick="crearListasSP()">🏗 Crear listas en SharePoint</button>
-          <button class="btn btn-ghost btn-sm" onclick="sincronizarConfigSP()">☁️ Sincronizar config</button>
+          <button class="btn btn-ghost btn-sm" onclick="probarSupabase()">🧪 Probar conexión</button>
+          <button class="btn btn-ghost btn-sm" onclick="sincronizarTodo()">🔄 Sincronizar ahora</button>
         </div>
         <div id="sp-test-result" style="margin-top:.6rem;font-size:.78rem;"></div>
       </div>
     </div>
+
 
     <!-- INFO GENERAL -->
     <div class="card">
@@ -1992,10 +1978,6 @@ function renderConfigPanel(){
   document.getElementById('cfg-empresa-default').value=CFG.empresa_default||'';
   document.getElementById('cfg-escala').value=CFG.escala||5;
   document.getElementById('cfg-anonimato').value=CFG.anonimato||'opcional';
-  const spClientEl=document.getElementById('cfg-sp-clientid'); if(spClientEl) spClientEl.value=CFG.sp_clientid||'';
-  const spTenantEl=document.getElementById('cfg-sp-tenantid'); if(spTenantEl) spTenantEl.value=CFG.sp_tenantid||'';
-  const spSiteEl=document.getElementById('cfg-sp-siteurl'); if(spSiteEl) spSiteEl.value=CFG.sp_siteurl||'https://intrarhecursos.sharepoint.com/sites/INTRARHECURSOS';
-  const spRedirEl=document.getElementById('cfg-sp-redirecturi'); if(spRedirEl) spRedirEl.value=CFG.sp_redirecturi||'';
   renderCfgDimensiones();
   renderCfgCompetencias();
   renderCfgObjetivos();
@@ -3298,6 +3280,31 @@ function setLoading(tipo, show, msg='Generando…'){
   if(!el) return;
   el.classList.toggle('vis', show);
   if(msgEl) msgEl.textContent = msg;
+}
+
+
+// -- STUBS for removed SharePoint functions --
+function probarSharePoint(){ showToast('Sistema usando Supabase, no SharePoint'); }
+function crearListasSP(){ showToast('Sistema usando Supabase, no SharePoint'); }
+function sincronizarConfigSP(){ saveConfigToSupabase(); showToast('✅ Config sincronizada con Supabase'); }
+async function probarSupabase(){
+  const el = document.getElementById('sp-test-result');
+  if(el) el.textContent = 'Probando…';
+  try {
+    const { data, error } = await _supaClient.from('irh_config').select('id').limit(1);
+    if(error) throw error;
+    if(el){ el.textContent = '✅ Conexión exitosa con Supabase'; el.style.color='var(--green)'; }
+    showToast('✅ Supabase conectado', 'success');
+  } catch(err){
+    if(el){ el.textContent = '❌ Error: '+err.message; el.style.color='var(--red)'; }
+  }
+}
+async function sincronizarTodo(){
+  setSyncStatus('syncing','Sincronizando…');
+  await loadDataFromSupabase();
+  setSyncStatus('ok','Sincronizado · '+new Date().toLocaleTimeString('es-DO'));
+  showToast('✅ Datos sincronizados','success');
+  renderDashboard();
 }
 
 // ══════════════════════════════════════════════════════
