@@ -2411,8 +2411,12 @@ function mostrarExpired(empresa){
 
 function activarModoParticipante(){
   // Hide sidebar and main, show participante panel
-  document.querySelector('.sidebar').style.display='none';
-  document.querySelector('.main').style.display='none';
+  const sb = document.querySelector('.sidebar');
+  const mn = document.querySelector('.main');
+  sb.classList.remove('auth-hide'); sb.style.display='none';
+  mn.classList.remove('auth-hide'); mn.style.display='none';
+  document.getElementById('sp-user-bar').style.display='none';
+  document.getElementById('menu-toggle').style.display='none';
   const panel = document.getElementById('panel-participante');
   panel.style.display='block';
 
@@ -3640,8 +3644,13 @@ goPanel = function(id, el){
 // -- INIT --
 document.addEventListener('DOMContentLoaded', async ()=>{
   initSupabase();
-  if(!detectarModoParticipante()){
-    // Check for existing session
+  const esParticipante = detectarModoParticipante();
+  if(esParticipante){
+    // Participant mode: remove auth-hide so activarModoParticipante can work
+    document.querySelector('.sidebar').classList.remove('auth-hide');
+    document.querySelector('.main').classList.remove('auth-hide');
+  } else {
+    // Admin mode: check session
     const { data: { session } } = await _supaClient.auth.getSession();
     if(session?.user){ currentUser=session.user; onLoginSuccess(session.user); }
     else showLoginOverlay('login');
