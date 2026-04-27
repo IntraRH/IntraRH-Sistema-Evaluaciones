@@ -559,18 +559,21 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
       </div>
       <div class="pub-welcome-body">
         <div id="pub-instrucciones" style="font-size:.85rem;color:var(--muted);line-height:1.6;margin-bottom:1rem;"></div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;font-size:.78rem;color:var(--muted);">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;font-size:.78rem;color:var(--muted);margin-bottom:1.2rem;">
           <span>⏱ Tiempo estimado: <strong id="pub-tiempo"></strong></span>
           <span>·</span>
           <span>📊 Escala: <strong id="pub-escala-info"></strong></span>
           <span>·</span>
           <span id="pub-anon-info"></span>
         </div>
+        <button class="btn btn-primary" style="width:100%;padding:.9rem;font-size:1rem;justify-content:center;" onclick="pubComenzar()">
+          Comenzar encuesta →
+        </button>
       </div>
     </div>
 
     <!-- Formulario público: mismo card style que el panel interno pero sin sidebar -->
-    <div class="card" style="margin-bottom:0;border-radius:var(--r) var(--r) 0 0;">
+    <div class="card" style="margin-bottom:0;border-radius:var(--r) var(--r) 0 0;display:none;">
       <div class="pub-header">
         <div class="pub-brand"><h1>Intra<em>RH</em>ecursos</h1><p>Gestión · Consultoría · Desarrollo Humano</p></div>
         <div class="pub-meta">
@@ -585,7 +588,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
       </div>
       <div class="steps-bar" id="pub-steps-bar"></div>
     </div>
-    <div class="card" style="border-radius:0 0 var(--r) var(--r);border-top:none;">
+    <div class="card" style="border-radius:0 0 var(--r) var(--r);border-top:none;display:none;">
       <div class="form-area" id="pub-form-area"></div>
       <div class="form-nav" style="padding:0 2.5rem 1.5rem;">
         <button class="btn btn-ghost" id="pub-btn-prev" onclick="pubPrev()" style="display:none;">← Anterior</button>
@@ -2723,6 +2726,13 @@ function pubSaveCurrentStep(){
   }
 }
 
+function pubComenzar(){
+  document.getElementById("pub-welcome-card").style.display="none";
+  document.querySelector("#panel-participante .card").style.display="";
+  document.querySelectorAll("#panel-participante .card")[1].style.display="";
+  renderPubForm();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
 function pubNext(){ pubSaveCurrentStep(); if(pubStep<getPubSteps().length-1){ pubStep++; renderPubForm(); window.scrollTo({top:0,behavior:'smooth'}); } }
 function pubPrev(){ pubSaveCurrentStep(); if(pubStep>0){ pubStep--; renderPubForm(); window.scrollTo({top:0,behavior:'smooth'}); } }
 function pubGoTo(i){ pubSaveCurrentStep(); pubStep=i; renderPubForm(); }
