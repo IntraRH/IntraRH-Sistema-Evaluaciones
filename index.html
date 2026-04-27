@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IntraRHecursos · Sistema de Evaluaciones</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1637,29 +1640,47 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 
   <!-- CLIMA: DIMENSIONES -->
   <div class="card">
-    <div class="card-header">
-      <span class="card-title">🌡️ Dimensiones y preguntas — Clima Organizacional</span>
-      <button class="btn btn-ghost btn-sm" onclick="addDimension()">+ Dimensión</button>
+    <div class="card-header" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+      <span class="card-title">🌡️ Dimensiones globales — Clima Organizacional</span>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span style="font-size:.72rem;color:var(--muted);">▾ Expandir</span>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();addDimension()">+ Dimensión</button>
+      </div>
     </div>
-    <div class="card-body" id="cfg-dimensiones"></div>
+    <div style="display:none;">
+      <div class="nota-blue" style="margin:0;border-radius:0;">💡 Estas son las dimensiones globales del sistema. Para configurar dimensiones por empresa usa <strong>Proyectos → Cuestionario → Nuevo cuestionario</strong>.</div>
+      <div class="card-body" id="cfg-dimensiones"></div>
+    </div>
   </div>
 
   <!-- ED: COMPETENCIAS -->
   <div class="card">
-    <div class="card-header">
-      <span class="card-title">📋 Competencias y preguntas — Evaluación de Desempeño</span>
-      <button class="btn btn-ghost btn-sm" onclick="addCompetencia()">+ Competencia</button>
+    <div class="card-header" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+      <span class="card-title">📋 Competencias globales — Evaluación de Desempeño</span>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span style="font-size:.72rem;color:var(--muted);">▾ Expandir</span>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();addCompetencia()">+ Competencia</button>
+      </div>
     </div>
-    <div class="card-body" id="cfg-competencias"></div>
+    <div style="display:none;">
+      <div class="nota-blue" style="margin:0;border-radius:0;">💡 Estas son las competencias globales. Para configurar por empresa usa <strong>Proyectos → Cuestionario → Nuevo cuestionario</strong>.</div>
+      <div class="card-body" id="cfg-competencias"></div>
+    </div>
   </div>
 
   <!-- ED: OBJETIVOS -->
   <div class="card">
-    <div class="card-header">
-      <span class="card-title">🎯 Objetivos — Evaluación de Desempeño</span>
-      <button class="btn btn-ghost btn-sm" onclick="addObjetivo()">+ Objetivo</button>
+    <div class="card-header" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+      <span class="card-title">🎯 Objetivos globales — Evaluación de Desempeño</span>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span style="font-size:.72rem;color:var(--muted);">▾ Expandir</span>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();addObjetivo()">+ Objetivo</button>
+      </div>
     </div>
-    <div class="card-body" id="cfg-objetivos"></div>
+    <div style="display:none;">
+      <div class="nota-blue" style="margin:0;border-radius:0;">💡 Objetivos globales del sistema. Configura objetivos específicos dentro de cada cuestionario en <strong>Proyectos → Cuestionario</strong>.</div>
+      <div class="card-body" id="cfg-objetivos"></div>
+    </div>
   </div>
 </div>
 
@@ -3298,7 +3319,10 @@ function copiarLink(id){
 
 function abrirLink(id){
   const link = LINKS.find(l=>l.id===id); if(!link) return;
-  window.open(buildLinkURL(link), '_blank');
+  const url = buildLinkURL(link);
+  const a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 function eliminarLink(id){
@@ -3322,7 +3346,7 @@ function verLink(id){
         </div>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;">
           <button class="btn btn-primary btn-sm" onclick="copiarLinkStr('${encodeURIComponent(url)}')">📋 Copiar link</button>
-          <button class="btn btn-ghost btn-sm" onclick="window.open('${url}','_blank')">🌐 Abrir en nueva pestaña</button>
+          <button class="btn btn-ghost btn-sm" onclick="(function(){const a=document.createElement('a');a.href='${url}';a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();document.body.removeChild(a);})()">🌐 Abrir en nueva pestaña</button>
         </div>
         <div class="card" style="padding:1rem;">
           <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.6rem;">Detalles del link</div>
@@ -6271,8 +6295,8 @@ function renderProjectResumen() {
   };
   const ringCol = favorabilidad >= 75 ? '#27AE60' : favorabilidad >= 55 ? '#F39C12' : '#E74C3C';
   cont.innerHTML = '<div class="g4" style="margin-bottom:1.4rem;">' +
-    kpiCard('📊', 'var(--purple-pale)', n, 'Respuestas totales') +
-    kpiCard('⭐', 'var(--blue-pale)', avg.toFixed(2) + '/' + escala, 'Promedio general') +
+    kpiCardP('📊', 'var(--purple-pale)', n, 'Respuestas totales') +
+    kpiCardP('⭐', 'var(--blue-pale)', avg.toFixed(2) + '/' + escala, 'Promedio general') +
     kpiCard(favorabilidad >= 75 ? '💚' : favorabilidad >= 55 ? '🟡' : '🔴', favorabilidad >= 75 ? 'var(--green-pale)' : favorabilidad >= 55 ? 'var(--yellow-pale)' : 'var(--red-pale)', favorabilidad + '%', 'Favorabilidad') +
     extra + '</div>' +
     '<div class="g2"><div class="card" style="margin-bottom:0;"><div class="card-header"><span class="card-title">Indicadores clave</span></div><div class="card-body">' +
@@ -6294,7 +6318,7 @@ function renderProjectResumen() {
     '</div></div></div>';
 }
 
-function kpiCard(icon, bg, val, label) {
+function kpiCardP(icon, bg, val, label) {
   return '<div class="kpi"><div class="kpi-top"><div class="kpi-icon" style="background:' + bg + ';">' + icon + '</div></div>' +
     '<div class="kpi-val">' + val + '</div><div class="kpi-label">' + label + '</div></div>';
 }
@@ -6447,10 +6471,10 @@ function renderAnalisisKPIs(data, tipo, escala) {
     });
     const best = dims[dimAvgs.indexOf(Math.max(...dimAvgs))]?.titulo || '—';
     if (badge) badge.textContent = data.length + ' respuestas · Escala 1-' + escala;
-    cont.innerHTML = kpiCard('📊', 'var(--purple-pale)', data.length, 'Respuestas') +
-      kpiCard('⭐', 'var(--blue-pale)', avg.toFixed(2) + '/' + escala, 'Promedio') +
+    cont.innerHTML = kpiCardP('📊', 'var(--purple-pale)', data.length, 'Respuestas') +
+      kpiCardP('⭐', 'var(--blue-pale)', avg.toFixed(2) + '/' + escala, 'Promedio') +
       kpiCard(fav >= 75 ? '💚' : fav >= 55 ? '🟡' : '🔴', fav >= 75 ? 'var(--green-pale)' : fav >= 55 ? 'var(--yellow-pale)' : 'var(--red-pale)', fav + '%', 'Favorabilidad') +
-      kpiCard('🏆', 'var(--green-pale)', best, 'Mejor dimensión');
+      kpiCardP('🏆', 'var(--green-pale)', best, 'Mejor dimensión');
   } else {
     const vals = data.map(r => r.global || 0).filter(v => v > 0);
     const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
@@ -6458,10 +6482,10 @@ function renderAnalisisKPIs(data, tipo, escala) {
     const m = _calibModel || {};
     const clasif = avg >= (m.rango_sob || 4.5) ? 'Sobresaliente' : avg >= (m.rango_sup || 3.8) ? 'Supera' : avg >= (m.rango_cum || 3.0) ? 'Cumple' : 'Bajo';
     if (badge) badge.textContent = data.length + ' evaluaciones · Escala 1-' + escala;
-    cont.innerHTML = kpiCard('📋', 'var(--purple-pale)', data.length, 'Evaluaciones') +
-      kpiCard('⭐', 'var(--blue-pale)', avg.toFixed(2) + '/' + escala, 'Promedio global') +
-      kpiCard('📈', 'var(--green-pale)', fav + '%', 'Cumplimiento') +
-      kpiCard('🏅', 'var(--yellow-pale)', clasif, 'Clasificación');
+    cont.innerHTML = kpiCardP('📋', 'var(--purple-pale)', data.length, 'Evaluaciones') +
+      kpiCardP('⭐', 'var(--blue-pale)', avg.toFixed(2) + '/' + escala, 'Promedio global') +
+      kpiCardP('📈', 'var(--green-pale)', fav + '%', 'Cumplimiento') +
+      kpiCardP('🏅', 'var(--yellow-pale)', clasif, 'Clasificación');
   }
 }
 
@@ -6546,7 +6570,7 @@ function renderAnalisisENPS(data, escala) {
   const dets = data.filter(r => r.recomienda === 'No').length;
   const enps = Math.round(((recom - dets) / data.length) * 100);
   const cont = document.getElementById('anal-enps-kpis');
-  if (cont) cont.innerHTML = kpiCard('😊', 'var(--green-pale)', recom, 'Promotores') + kpiCard('😐', 'var(--yellow-pale)', neutros, 'Neutrales') + kpiCard('😞', 'var(--red-pale)', dets, 'Detractores') + kpiCard(enps >= 30 ? '💚' : enps >= 0 ? '🟡' : '🔴', 'var(--purple-pale)', (enps > 0 ? '+' : '') + enps, 'eNPS Score');
+  if (cont) cont.innerHTML = kpiCardP('😊', 'var(--green-pale)', recom, 'Promotores') + kpiCardP('😐', 'var(--yellow-pale)', neutros, 'Neutrales') + kpiCardP('😞', 'var(--red-pale)', dets, 'Detractores') + kpiCard(enps >= 30 ? '💚' : enps >= 0 ? '🟡' : '🔴', 'var(--purple-pale)', (enps > 0 ? '+' : '') + enps, 'eNPS Score');
   _mkChart('anal-chart-enps', 'doughnut', ['Promotores', 'Neutrales', 'Detractores'],
     [{ data: [recom, neutros, dets], backgroundColor: ['rgba(39,174,96,.8)', 'rgba(243,156,18,.8)', 'rgba(231,76,60,.8)'], borderWidth: 2 }]);
   const comt = document.getElementById('anal-comentarios-box');
