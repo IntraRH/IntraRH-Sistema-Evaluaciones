@@ -556,6 +556,24 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
   </div>
   <div class="g2" style="margin-top:1rem;">
     <div class="card">
+      <div class="card-header"><span class="card-title">🤖 Análisis con IA — Google Gemini</span></div>
+      <div class="card-body">
+        <div class="nota-blue" style="line-height:1.7;">
+          Usa <b>Google AI Studio (Gemini)</b> para el análisis de resultados.<br>
+          La clave se guarda solo en tu navegador. Límite: <b>5 análisis por día</b> por usuario.
+        </div>
+        <div class="fg">
+          <label class="fl">API Key de Google AI Studio</label>
+          <input class="fi" id="cfg-openai-key" type="password" placeholder="AIza…" autocomplete="off">
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem;">
+          Obtén tu key gratis en
+          <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--purple);">aistudio.google.com/apikey</a>
+          · Modelo: <b>gemini-2.0-flash</b> (gratuito)
+        </div>
+      </div>
+    </div>
+    <div class="card">
       <div class="card-header"><span class="card-title">🗄️ Base de datos Supabase</span></div>
       <div class="card-body">
         <div class="nota-blue">✅ Conectado. Los datos se sincronizan automáticamente.</div>
@@ -2686,25 +2704,60 @@ Recomendaciones:
 }
 
 async function callIA(prompt) {
-  // Get current user JWT for auth
   const session = (await _supa.auth.getSession()).data?.session;
   if (!session) throw new Error('Debes iniciar sesión para usar el análisis con IA');
-  const res = await fetch(IA_FN_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-      'apikey': SUPA_KEY
-    },
-    body: JSON.stringify({ prompt })
-  });
-  if (!res.ok) {
+
+  // ── Intentar via Edge Function primero ──
+  try {
+    const res = await fetch(IA_FN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}`, 'apikey':SUPA_KEY },
+      body: JSON.stringify({ prompt })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data.text || '';
+    }
+    if (res.status === 404 || res.status === 0) throw new Error('EDGE_NOT_FOUND');
     const e = await res.json().catch(()=>({}));
     throw new Error(e.error || `Error HTTP ${res.status}`);
+  } catch(edgeErr) {
+    if (!edgeErr.message.includes('EDGE_NOT_FOUND') && !edgeErr.message.includes('Failed to fetch')) {
+      throw edgeErr;
+    }
+    // ── Fallback: Google AI Studio (Gemini) directo ──
+    const today = new Date().toISOString().split('T')[0];
+    const userId = session.user.id;
+    const { data: uso } = await _supa.from('ia_usage').select('count').eq('user_id', userId).eq('date', today).maybeSingle();
+    const countHoy = uso?.count || 0;
+    if (countHoy >= 5) throw new Error('Límite de 5 análisis diarios alcanzado. Regresa mañana.');
+
+    const geminiKey = CFG.gemini_key;
+    if (!geminiKey) throw new Error('Configura tu API key de Google AI Studio en Configuración → IA.');
+
+    // Google AI Studio — endpoint compatible con OpenAI
+    const aiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${geminiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gemini-2.0-flash',
+        max_tokens: 800,
+        temperature: 0.4,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const aiData = await aiRes.json();
+    if (aiData.error) throw new Error('Gemini: ' + (aiData.error.message || JSON.stringify(aiData.error)));
+    const text = aiData.choices?.[0]?.message?.content || '';
+
+    // Guardar uso
+    await _supa.from('ia_usage').upsert({ user_id:userId, date:today, count:countHoy+1 }, { onConflict:'user_id,date' });
+    return text;
   }
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data.text || '';
 }
 
 async function probarIA() {
@@ -4007,8 +4060,8 @@ function renderConfigPanel() {
   document.getElementById('cfg-firma').value    = CFG.firma||'IntraRHecursos';
   document.getElementById('cfg-escala').value   = CFG.escala||5;
   document.getElementById('cfg-anonimato').value= CFG.anonimato||'opcional';
-  const provEl = document.getElementById('cfg-ia-provider');
-  if (provEl) { provEl.value = CFG.ia_provider||'claude'; toggleIAProvider(); }
+  const oaEl = document.getElementById('cfg-openai-key');
+  if (oaEl) oaEl.value = CFG.gemini_key||'';
   const emailCfg = CFG.email||{};
   const emailEl  = document.getElementById('cfg-email-config');
   if (emailEl) emailEl.innerHTML = `
@@ -4021,7 +4074,7 @@ async function guardarConfig() {
   CFG.firma       = document.getElementById('cfg-firma').value;
   CFG.escala      = parseInt(document.getElementById('cfg-escala').value)||5;
   CFG.anonimato   = document.getElementById('cfg-anonimato').value;
-  CFG.ia_provider = document.getElementById('cfg-ia-provider')?.value||'claude';
+  CFG.gemini_key   = document.getElementById('cfg-openai-key')?.value||'';
   CFG.email = {
     srv:  document.getElementById('cfg-email-srv')?.value||'',
     key:  document.getElementById('cfg-email-key')?.value||'',
