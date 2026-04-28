@@ -227,24 +227,6 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 .export-loading.vis{display:flex;}
 .export-spinner{width:14px;height:14px;border:2px solid var(--purple-mid);border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite;}
 
-/* ── USER MANAGEMENT ── */
-.role-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.65rem;font-weight:800;padding:.2rem .55rem;border-radius:20px;white-space:nowrap;}
-.role-owner{background:linear-gradient(135deg,#7B4FA6,#3A9BD5);color:#fff;}
-.role-admin{background:var(--blue-pale);color:var(--blue);}
-.role-viewer{background:#F0EFF5;color:var(--muted);}
-.user-card{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);padding:1.1rem 1.3rem;display:flex;align-items:center;gap:1rem;transition:all .15s;}
-.user-card:hover{border-color:var(--purple-mid);box-shadow:var(--sh);}
-.user-card-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:900;flex-shrink:0;color:#fff;}
-.user-card-info{flex:1;min-width:0;}
-.user-card-name{font-weight:800;font-size:.9rem;margin-bottom:.2rem;}
-.user-card-email{font-size:.72rem;color:var(--muted);}
-.user-card-actions{display:flex;gap:.4rem;align-items:center;flex-shrink:0;}
-.status-active{color:var(--green);}
-.status-inactive{color:var(--muted);}
-.perm-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-top:.6rem;}
-.perm-item{background:var(--bg);border-radius:var(--rs);padding:.5rem .7rem;font-size:.7rem;font-weight:700;display:flex;align-items:center;gap:.4rem;}
-.perm-item.allowed{color:var(--green);}
-.perm-item.denied{color:var(--muted);opacity:.6;}
 /* ── TOGGLE ── */
 .toggle-row{display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;border:1.5px solid var(--purple-mid);border-radius:var(--rs);background:var(--purple-pale);cursor:pointer;margin-bottom:.8rem;}
 .toggle-row input[type=checkbox]{accent-color:var(--purple);width:17px;height:17px;}
@@ -388,7 +370,6 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
     <div class="nav-item" id="nav-reportes" onclick="goPanel('reportes',this)"><span class="nav-icon">📋</span>Reportes</div>
     <div class="nav-label">Sistema</div>
     <div class="nav-item" id="nav-configuracion" onclick="goPanel('configuracion',this)"><span class="nav-icon">⚙️</span>Configuración</div>
-    <div class="nav-item" id="nav-usuarios" onclick="goPanel('usuarios',this)" style="display:none;"><span class="nav-icon">🔐</span>Usuarios</div>
     <!-- Project inner nav (hidden by default) -->
     <div id="proj-nav-section" style="display:none;">
       <div class="nav-label" id="proj-nav-label">Proyecto</div>
@@ -411,7 +392,6 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
       <div style="flex:1;min-width:0;">
         <div class="user-name" id="user-name">Usuario</div>
         <div class="user-email" id="user-email"></div>
-        <div style="margin-top:.2rem;" id="user-role-badge"></div>
       </div>
     </div>
     <div class="sync-row">
@@ -433,7 +413,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
   <div class="ph">
     <div><div class="ph-title">🏠 Dashboard</div><div class="ph-sub">Resumen general del sistema</div></div>
     <div class="ph-actions">
-      <button class="btn btn-primary" id="btn-nuevo-proy-dash" onclick="goPanel('proyectos',document.getElementById('nav-proyectos'))">+ Nuevo proyecto</button>
+      <button class="btn btn-primary" onclick="goPanel('proyectos',document.getElementById('nav-proyectos'))">+ Nuevo proyecto</button>
     </div>
   </div>
   <div class="g4" id="dash-kpis" style="margin-bottom:1.4rem;"></div>
@@ -518,58 +498,6 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
     <div><div class="ph-title">📋 Reportes</div><div class="ph-sub">Genera informes de cualquier proyecto</div></div>
   </div>
   <div id="reportes-content"></div>
-</div>
-
-<!-- ─── USUARIOS ─── -->
-<div id="panel-usuarios" class="panel">
-  <div class="ph">
-    <div><div class="ph-title">🔐 Gestión de Usuarios</div><div class="ph-sub">Administra accesos, roles y permisos del sistema</div></div>
-    <div class="ph-actions" id="btn-nuevo-usuario-wrap">
-      <button class="btn btn-primary" onclick="openModalNuevoUsuario()">+ Nuevo usuario</button>
-    </div>
-  </div>
-  <!-- Rol info -->
-  <div id="usuarios-rol-info" class="nota-blue" style="margin-bottom:1.2rem;"></div>
-  <!-- KPIs -->
-  <div class="g4" id="usuarios-kpis" style="margin-bottom:1.4rem;"></div>
-  <!-- Tabla -->
-  <div class="card">
-    <div class="filter-bar">
-      <input class="filter-input" id="usr-filter" placeholder="🔍 Buscar usuario…" oninput="renderUsuariosTable()">
-      <select class="filter-input" id="usr-filter-rol" onchange="renderUsuariosTable()">
-        <option value="">Todos los roles</option>
-        <option value="owner">Owner</option>
-        <option value="admin">Admin</option>
-        <option value="viewer">Viewer</option>
-      </select>
-      <select class="filter-input" id="usr-filter-estado" onchange="renderUsuariosTable()">
-        <option value="">Todos los estados</option>
-        <option value="activo">Activo</option>
-        <option value="inactivo">Inactivo</option>
-      </select>
-      <span id="usr-count" style="font-size:.72rem;font-weight:800;color:var(--muted);margin-left:auto;"></span>
-    </div>
-    <div id="usuarios-table-wrap" style="padding:1rem 1.3rem;"></div>
-  </div>
-  <!-- Permisos info -->
-  <div class="card" style="margin-top:1.2rem;">
-    <div class="card-header"><span class="card-title">📋 Matriz de permisos por rol</span></div>
-    <div class="card-body">
-      <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:.75rem;">
-          <thead>
-            <tr>
-              <th style="text-align:left;padding:.5rem .8rem;background:var(--bg);border-bottom:1.5px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Permiso</th>
-              <th style="padding:.5rem .8rem;background:var(--bg);border-bottom:1.5px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-align:center;">👑 Owner</th>
-              <th style="padding:.5rem .8rem;background:var(--bg);border-bottom:1.5px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-align:center;">🛠 Admin</th>
-              <th style="padding:.5rem .8rem;background:var(--bg);border-bottom:1.5px solid var(--border);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-align:center;">👁 Viewer</th>
-            </tr>
-          </thead>
-          <tbody id="permisos-matrix-body"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- ─── CONFIGURACIÓN ─── -->
@@ -670,16 +598,11 @@ CREATE TABLE irh_proj_users (id bigint generated always as identity primary key,
 CREATE TABLE irh_links_store (id bigint generated always as identity primary key, links_json jsonb, updated_at text);
 CREATE TABLE irh_colaboradores (id bigint generated always as identity primary key, nombre text, correo text, empresa text, dept text, cargo text, created_at timestamp default now());
 CREATE TABLE irh_config (id bigint generated always as identity primary key, config_json jsonb, created_at timestamp default now());
-CREATE TABLE irh_users (id bigint generated always as identity primary key, nombre text, correo text, password_hash text, rol text default 'viewer', estado text default 'activo', auth_uid text, created_at timestamp default now(), updated_at timestamp default now());
 -- Permisos anon para respuestas y participantes
 ALTER TABLE irh_respuestas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE irh_participantes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "anon insert" ON irh_respuestas FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "anon insert" ON irh_participantes FOR INSERT TO anon WITH CHECK (true);
--- Tabla de usuarios del sistema
-ALTER TABLE irh_users ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "auth read irh_users" ON irh_users FOR SELECT TO authenticated USING (true);
-CREATE POLICY "auth write irh_users" ON irh_users FOR ALL TO authenticated USING (true) WITH CHECK (true);</pre>
+CREATE POLICY "anon insert" ON irh_participantes FOR INSERT TO anon WITH CHECK (true);</pre>
         </details>
       </div>
     </div>
@@ -841,50 +764,6 @@ CREATE POLICY "auth write irh_users" ON irh_users FOR ALL TO authenticated USING
     <div class="factions">
       <button class="btn btn-ghost" onclick="closeModal('m-colaborador')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarColaborador()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Nuevo/Editar Usuario -->
-<div class="modal-overlay" id="m-usuario">
-  <div class="modal">
-    <div class="modal-header"><span class="modal-title" id="m-usr-title">👤 Nuevo usuario</span><button class="modal-close" onclick="closeModal('m-usuario')">✕</button></div>
-    <input type="hidden" id="m-usr-id">
-    <div class="fg"><label class="fl">Nombre completo *</label><input class="fi" id="m-usr-nombre" placeholder="Ej: María González"></div>
-    <div class="fg"><label class="fl">Correo electrónico *</label><input class="fi" id="m-usr-correo" type="email" placeholder="correo@empresa.com"></div>
-    <div class="fg" id="m-usr-pass-wrap"><label class="fl">Contraseña *</label>
-      <div style="display:flex;gap:.4rem;align-items:center;">
-        <input class="fi" id="m-usr-password" type="password" placeholder="Mínimo 8 caracteres" style="flex:1;">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePassVisibility('m-usr-password',this)" style="white-space:nowrap;flex-shrink:0;">👁 Ver</button>
-      </div>
-      <div style="font-size:.68rem;color:var(--muted);margin-top:.3rem;">La contraseña se almacenará de forma segura (bcrypt).</div>
-    </div>
-    <div class="fg" id="m-usr-pass-change-wrap" style="display:none;">
-      <label class="fl">Nueva contraseña <span style="font-weight:500;text-transform:none;">(dejar vacío para no cambiar)</span></label>
-      <div style="display:flex;gap:.4rem;align-items:center;">
-        <input class="fi" id="m-usr-newpassword" type="password" placeholder="Nueva contraseña…" style="flex:1;">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="togglePassVisibility('m-usr-newpassword',this)" style="white-space:nowrap;flex-shrink:0;">👁 Ver</button>
-      </div>
-    </div>
-    <div class="fr">
-      <div class="fg"><label class="fl">Rol *</label>
-        <select class="fi" id="m-usr-rol" onchange="updateRolDesc()">
-          <option value="owner">👑 Owner — Control total</option>
-          <option value="admin">🛠 Admin — Gestión de proyectos</option>
-          <option value="viewer">👁 Viewer — Solo lectura</option>
-        </select>
-      </div>
-      <div class="fg"><label class="fl">Estado</label>
-        <select class="fi" id="m-usr-estado">
-          <option value="activo">✅ Activo</option>
-          <option value="inactivo">⏸ Inactivo</option>
-        </select>
-      </div>
-    </div>
-    <div id="m-usr-rol-desc" style="font-size:.72rem;color:var(--muted);background:var(--bg);border-radius:var(--rs);padding:.5rem .8rem;margin-bottom:.8rem;line-height:1.6;"></div>
-    <div class="factions">
-      <button class="btn btn-ghost" onclick="closeModal('m-usuario')">Cancelar</button>
-      <button class="btn btn-primary" id="btn-guardar-usuario" onclick="guardarUsuario()">Guardar usuario</button>
     </div>
   </div>
 </div>
@@ -1284,7 +1163,6 @@ function goPanel(id, el) {
   else if (id === 'colaboradores') renderColabPanel();
   else if (id === 'reportes')  renderReportes();
   else if (id === 'configuracion') renderConfigPanel();
-  else if (id === 'usuarios') renderPanelUsuarios();
   if (window.innerWidth <= 768) closeSidebar();
 }
 
@@ -1325,9 +1203,6 @@ function closeProject() {
 
 function checkAccess(proyId) {
   if (!currentUser) return false;
-  // Owners and admins have access to all projects
-  const globalRol = currentUser._irhRol || 'viewer';
-  if (globalRol === 'owner' || globalRol === 'admin') return true;
   const p = PROYECTOS.find(x => x.id === proyId); if (!p) return false;
   if (p.owner_id === currentUser.id) return true;
   return !!PROJ_USERS.find(x => x.proyecto_id === proyId && x.user_id === currentUser.id);
@@ -1847,16 +1722,33 @@ function renderProjItemsHTML(projId, items, tipo) {
             </select>
             <button style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;" onclick="_rmPreg('${projId}','${tipo}',${di},${pi})" title="Eliminar">✕</button>
           </div>
-          ${['multiple','checkbox','desplegable'].includes(pTipo) ? `
-          <div style="margin:4px 0 4px 18px;padding:6px 10px;background:var(--bg);border-radius:6px;">
-            ${(p2.opciones||['Opción 1']).map((op,oi)=>`
-              <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
-                <span style="font-size:.7rem;color:var(--muted);">${pTipo==='checkbox'?'☐':pTipo==='multiple'?'○':'◉'}</span>
-                <input value="${(op||'').replace(/"/g,'&quot;')}" style="flex:1;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-family:'Nunito',sans-serif;font-size:.74rem;outline:none;" oninput="_setOpt('${tipo}',${di},${pi},${oi},this.value)">
-                <button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;" onclick="_rmOpt('${projId}','${tipo}',${di},${pi},${oi})">✕</button>
+          ${['multiple','checkbox','desplegable'].includes(pTipo) ? (() => {
+            const ops = (p2.opciones && p2.opciones.length >= 2) ? p2.opciones : ['Opción 1','Opción 2'];
+            const icon = pTipo==='checkbox'?'☐':pTipo==='multiple'?'○':'▾';
+            const atMax = ops.length >= 10;
+            const atMin = ops.length <= 2;
+            return `
+          <div style="margin:4px 0 8px 24px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
+            <div style="font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;">Opciones (${ops.length}/10) — mín. 2</div>
+            ${ops.map((op,oi)=>`
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;">
+                <span style="font-size:.62rem;font-weight:800;color:var(--muted);min-width:16px;text-align:right;">${oi+1}</span>
+                <span style="font-size:.75rem;color:var(--muted);flex-shrink:0;">${icon}</span>
+                <input value="${(op||'').replace(/"/g,'&quot;').replace(/'/g,"&#39;")}"
+                  style="flex:1;padding:4px 7px;border:1.5px solid var(--border);border-radius:5px;font-family:'Nunito',sans-serif;font-size:.76rem;outline:none;transition:border-color .15s;"
+                  onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border)'"
+                  oninput="_setOpt('${tipo}',${di},${pi},${oi},this.value)"
+                  placeholder="Opción ${oi+1}">
+                <button style="background:none;border:none;cursor:pointer;color:${atMin?'var(--border)':'var(--red)'};font-size:.8rem;padding:2px 4px;transition:color .15s;" ${atMin?'disabled title="Mínimo 2 opciones"':''} onclick="_rmOpt('${projId}','${tipo}',${di},${pi},${oi})" title="Eliminar opción">✕</button>
               </div>`).join('')}
-            <button style="background:none;border:none;cursor:pointer;color:var(--purple);font-size:.72rem;font-weight:700;padding:2px 0;" onclick="_addOpt('${projId}','${tipo}',${di},${pi})">+ Agregar opción</button>
-          </div>` : ''}
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+              <button style="background:none;border:none;cursor:${atMax?'not-allowed':'pointer'};color:${atMax?'var(--muted)':'var(--purple)'};font-size:.72rem;font-weight:800;padding:3px 0;display:flex;align-items:center;gap:3px;" ${atMax?'disabled':''} onclick="_addOpt('${projId}','${tipo}',${di},${pi})" title="${atMax?'Máximo 10 opciones':'Agregar opción'}">
+                + Agregar opción ${atMax?'<span style="font-size:.6rem;color:var(--muted);">(máx. 10)</span>':''}
+              </button>
+              ${atMax?'<span style="font-size:.62rem;color:var(--yellow);font-weight:700;">⚠ Límite alcanzado</span>':''}
+            </div>
+          </div>`;
+          })() : ''}
           ${pTipo==='lineal' ? `
           <div style="margin:4px 0 4px 18px;display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--muted);">
             <span>Mín:</span><input type="number" value="${p2.linMin||1}" min="0" max="10" style="width:46px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:.72rem;" oninput="_setLineal('${tipo}',${di},${pi},'linMin',this.value)">
@@ -1878,25 +1770,37 @@ function _setTT(tipo,di,pi,val){
   const c=a[di].preguntas[pi];
   const t=typeof c==='object'?(c.texto||''):(c||'');
   const needsOpts=['multiple','checkbox','desplegable'];
-  const opts=needsOpts.includes(val)?(c.opciones||['Opción 1','Opción 2']):undefined;
+  let opts=undefined;
+  if(needsOpts.includes(val)){
+    // Preserve existing options if valid, otherwise seed with 2
+    const existing=c.opciones||[];
+    opts=existing.length>=2?existing:['Opción 1','Opción 2'];
+  }
   const linMin=val==='lineal'?(c.linMin||1):undefined;
   const linMax=val==='lineal'?(c.linMax||5):undefined;
   a[di].preguntas[pi]={texto:t,tipo:val,...(opts?{opciones:opts}:{}),...(linMin!==undefined?{linMin,linMax}:{})};
   document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(currentProjectId,a,tipo);
 }
 function _setLineal(tipo,di,pi,field,val){const a=tipo==='dim'?_editDims:_editComps;a[di].preguntas[pi][field]=parseInt(val)||1;}
-function _addOpt(tipo,di,pi){
-  a[di].preguntas[pi].opciones=a[di].preguntas[pi].opciones||[];
-  a[di].preguntas[pi].opciones.push('Nueva opción');
-  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(currentProjectId,a,tipo);
-}
-function _rmOpt(tipo,di,pi,oi){
+function _addOpt(projId,tipo,di,pi){
   const a=tipo==='dim'?_editDims:_editComps;
-  a[di].preguntas[pi].opciones.splice(oi,1);
-  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(currentProjectId,a,tipo);
+  if(!a[di]||!a[di].preguntas[pi]) return;
+  const ops=a[di].preguntas[pi].opciones=a[di].preguntas[pi].opciones||['Opción 1','Opción 2'];
+  if(ops.length>=10){showToast('Máximo 10 opciones por pregunta','error');return;}
+  ops.push('Opción '+(ops.length+1));
+  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);
+}
+function _rmOpt(projId,tipo,di,pi,oi){
+  const a=tipo==='dim'?_editDims:_editComps;
+  if(!a[di]||!a[di].preguntas[pi]) return;
+  const ops=a[di].preguntas[pi].opciones||[];
+  if(ops.length<=2){showToast('Mínimo 2 opciones requeridas','error');return;}
+  ops.splice(oi,1);
+  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);
 }
 function _setOpt(tipo,di,pi,oi,val){
   const a=tipo==='dim'?_editDims:_editComps;
+  if(!a[di]||!a[di].preguntas[pi]||!a[di].preguntas[pi].opciones) return;
   a[di].preguntas[pi].opciones[oi]=val;
 }
 function _addPreg(projId,tipo,di){const a=tipo==='dim'?_editDims:_editComps;a[di].preguntas.push({texto:'Nueva pregunta',tipo:'escala'});document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);}
@@ -1934,6 +1838,22 @@ function addProjObj() {
 
 async function guardarCuestionarioProj() {
   const p = PROYECTOS.find(x=>x.id===currentProjectId); if (!p) return;
+  // ── Validar opciones antes de guardar ──
+  const needsOpts=['multiple','checkbox','desplegable'];
+  const items = p.tipo==='clima' ? _editDims : _editComps;
+  for(let di=0;di<items.length;di++){
+    for(let pi=0;pi<(items[di].preguntas||[]).length;pi++){
+      const preg=items[di].preguntas[pi];
+      if(typeof preg!=='object') continue;
+      if(!needsOpts.includes(preg.tipo)) continue;
+      const ops=preg.opciones||[];
+      if(ops.length<2){showToast(`"${preg.texto||'Pregunta '+(pi+1)}": mínimo 2 opciones requeridas`,'error');return;}
+      const vacias=ops.filter(o=>!o||!o.trim());
+      if(vacias.length>0){showToast(`"${preg.texto||'Pregunta '+(pi+1)}": hay opciones vacías`,'error');return;}
+      const unicas=new Set(ops.map(o=>o.trim().toLowerCase()));
+      if(unicas.size<ops.length){showToast(`"${preg.texto||'Pregunta '+(pi+1)}": hay opciones duplicadas`,'error');return;}
+    }
+  }
   if (p.tipo==='clima') p.dimensiones = JSON.parse(JSON.stringify(_editDims));
   else { p.competencias = JSON.parse(JSON.stringify(_editComps)); p.objetivos = JSON.parse(JSON.stringify(_editObjs)); }
   saveDB('irh_proyectos',PROYECTOS);
@@ -4588,22 +4508,22 @@ function renderClimaSec(areaId, step, resp, p) {
               </div>`;
             }
             if (pregTipo==='multiple'||pregTipo==='checkbox') {
-              const opts = preg.opciones||['Opción 1','Opción 2'];
+              const opts = (preg.opciones && preg.opciones.length>=2) ? preg.opciones : ['Opción 1','Opción 2'];
               const isCheck = pregTipo==='checkbox';
               return `<div class="scale-g">
                 <div class="scale-q">${pi+1}. ${pregTxt}</div>
                 <div style="display:flex;flex-direction:column;gap:.4rem;margin-top:.4rem;">
-                  ${opts.map((op,oi)=>`<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;">
-                    <input type="${isCheck?'checkbox':'radio'}" name="pub_${key}" value="${oi}" onchange="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=${isCheck?`(pubResp.dimResp?.['${key}']||[]).includes(${oi})?(pubResp.dimResp['${key}'].filter(x=>x!==${oi})):[...(pubResp.dimResp?.['${key}']||[]),${oi}]`:oi};"> ${op}</label>`).join('')}
+                  ${opts.map((op,oi)=>`<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;padding:.3rem .5rem;border-radius:6px;transition:background .12s;" onmouseover="this.style.background='var(--purple-pale)'" onmouseout="this.style.background='transparent'">
+                    <input type="${isCheck?'checkbox':'radio'}" name="pub_${key}" value="${oi}" style="accent-color:var(--purple);" onchange="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=${isCheck?`(pubResp.dimResp?.['${key}']||[]).includes(${oi})?(pubResp.dimResp['${key}'].filter(x=>x!==${oi})):[...(pubResp.dimResp?.['${key}']||[]),${oi}]`:oi};"> ${op}</label>`).join('')}
                 </div>
               </div>`;
             }
             if (pregTipo==='desplegable') {
-              const opts = preg.opciones||['Opción 1'];
+              const opts = (preg.opciones && preg.opciones.length>=1) ? preg.opciones : ['Opción 1'];
               return `<div class="scale-g">
                 <div class="scale-q">${pi+1}. ${pregTxt}</div>
                 <select class="fi" style="max-width:320px;" onchange="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=this.value;">
-                  <option value="">Seleccionar…</option>
+                  <option value="">— Seleccionar —</option>
                   ${opts.map((op,oi)=>`<option value="${oi}" ${resp.dimResp?.[key]==oi?'selected':''}>${op}</option>`).join('')}
                 </select>
               </div>`;
@@ -4740,17 +4660,17 @@ function renderEvalSec(areaId, step, resp, p) {
               </div>`;
             }
             if (pregTipo==='multiple'||pregTipo==='checkbox') {
-              const opts=preg.opciones||['Opción 1','Opción 2']; const isCheck=pregTipo==='checkbox';
+              const opts=(preg.opciones && preg.opciones.length>=2)?preg.opciones:['Opción 1','Opción 2']; const isCheck=pregTipo==='checkbox';
               return `<div class="scale-g"><div class="scale-q">${pi+1}. ${pregTxt}</div>
                 <div style="display:flex;flex-direction:column;gap:.4rem;margin-top:.4rem;">
-                  ${opts.map((op,oi)=>`<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;"><input type="${isCheck?'checkbox':'radio'}" name="pub_${key}" value="${oi}" onchange="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=${isCheck?`(pubResp.compResp?.['${key}']||[]).includes(${oi})?(pubResp.compResp['${key}'].filter(x=>x!==${oi})):[...(pubResp.compResp?.['${key}']||[]),${oi}]`:oi};"> ${op}</label>`).join('')}
+                  ${opts.map((op,oi)=>`<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;padding:.3rem .5rem;border-radius:6px;transition:background .12s;" onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background='transparent'"><input type="${isCheck?'checkbox':'radio'}" name="pub_${key}" value="${oi}" style="accent-color:var(--blue);" onchange="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=${isCheck?`(pubResp.compResp?.['${key}']||[]).includes(${oi})?(pubResp.compResp['${key}'].filter(x=>x!==${oi})):[...(pubResp.compResp?.['${key}']||[]),${oi}]`:oi};"> ${op}</label>`).join('')}
                 </div></div>`;
             }
             if (pregTipo==='desplegable') {
-              const opts=preg.opciones||['Opción 1'];
+              const opts=(preg.opciones && preg.opciones.length>=1)?preg.opciones:['Opción 1'];
               return `<div class="scale-g"><div class="scale-q">${pi+1}. ${pregTxt}</div>
                 <select class="fi" style="max-width:320px;" onchange="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=this.value;">
-                  <option value="">Seleccionar…</option>
+                  <option value="">— Seleccionar —</option>
                   ${opts.map((op,oi)=>`<option value="${oi}">${op}</option>`).join('')}
                 </select></div>`;
             }
@@ -4936,463 +4856,6 @@ function openNewProyModal() {
   const prev=document.getElementById('m-proy-logo-prev');if(prev)prev.style.display='none';
   openModal('m-proyecto');
 }
-
-// ══════════════════════════════════════════
-// GESTIÓN DE USUARIOS — MÓDULO COMPLETO
-// ══════════════════════════════════════════
-
-// Global users array
-let IRH_USERS = [];
-
-// ── bcrypt-like hash using Web Crypto (PBKDF2 via SubtleCrypto) ──
-async function hashPassword(password) {
-  const enc = new TextEncoder();
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const saltHex = Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join('');
-  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:100000,hash:'SHA-256'}, keyMaterial, 256);
-  const hashHex = Array.from(new Uint8Array(bits)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  return `pbkdf2$100000$${saltHex}$${hashHex}`;
-}
-
-async function verifyPassword(password, storedHash) {
-  if (!storedHash || !storedHash.startsWith('pbkdf2$')) return false;
-  const parts = storedHash.split('$');
-  if (parts.length < 4) return false;
-  const [, iterations, saltHex, expectedHash] = parts;
-  const enc = new TextEncoder();
-  const salt = new Uint8Array(saltHex.match(/.{2}/g).map(b=>parseInt(b,16)));
-  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:parseInt(iterations),hash:'SHA-256'}, keyMaterial, 256);
-  const hashHex = Array.from(new Uint8Array(bits)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  return hashHex === expectedHash;
-}
-
-// ── Roles & permissions matrix ──
-const ROLES = {
-  owner: {
-    label:'Owner', icon:'👑', color:'#7B4FA6',
-    permisos: [
-      'Ver dashboard','Ver proyectos','Crear proyectos','Editar proyectos','Eliminar proyectos',
-      'Ver resultados','Exportar resultados','Análisis IA','Ver colaboradores',
-      'Gestionar colaboradores','Ver reportes','Configurar sistema','Gestionar usuarios',
-      'Asignar roles','Ver usuarios del proyecto'
-    ]
-  },
-  admin: {
-    label:'Admin', icon:'🛠', color:'#3A9BD5',
-    permisos: [
-      'Ver dashboard','Ver proyectos','Crear proyectos','Editar proyectos',
-      'Ver resultados','Exportar resultados','Análisis IA','Ver colaboradores',
-      'Gestionar colaboradores','Ver reportes','Ver usuarios del proyecto'
-    ]
-  },
-  viewer: {
-    label:'Viewer', icon:'👁', color:'#8B8BA0',
-    permisos: [
-      'Ver dashboard','Ver proyectos','Ver resultados','Ver colaboradores','Ver reportes'
-    ]
-  }
-};
-
-const ALL_PERMISOS = [
-  {key:'Ver dashboard', desc:'Acceso al panel principal'},
-  {key:'Ver proyectos', desc:'Ver la lista de proyectos'},
-  {key:'Crear proyectos', desc:'Crear nuevos proyectos'},
-  {key:'Editar proyectos', desc:'Modificar proyectos existentes'},
-  {key:'Eliminar proyectos', desc:'Eliminar proyectos del sistema'},
-  {key:'Ver resultados', desc:'Ver respuestas y resultados'},
-  {key:'Exportar resultados', desc:'Descargar Excel, PDF, PPTX'},
-  {key:'Análisis IA', desc:'Usar análisis por IA'},
-  {key:'Ver colaboradores', desc:'Ver el padrón de colaboradores'},
-  {key:'Gestionar colaboradores', desc:'Agregar/editar/importar colaboradores'},
-  {key:'Ver reportes', desc:'Acceder al módulo de reportes'},
-  {key:'Configurar sistema', desc:'Editar configuración general'},
-  {key:'Gestionar usuarios', desc:'Crear, editar y desactivar usuarios'},
-  {key:'Asignar roles', desc:'Cambiar roles de otros usuarios'},
-  {key:'Ver usuarios del proyecto', desc:'Ver quién tiene acceso a un proyecto'},
-];
-
-function tienePermiso(permiso) {
-  if (!currentUser) return false;
-  const rol = currentUser._irhRol || 'viewer';
-  return ROLES[rol]?.permisos?.includes(permiso) || false;
-}
-
-function getRolBadgeHTML(rol) {
-  const r = ROLES[rol] || ROLES.viewer;
-  return `<span class="role-badge role-${rol}">${r.icon} ${r.label}</span>`;
-}
-
-function getAvatarColor(nombre) {
-  const colors = ['#7B4FA6','#3A9BD5','#27AE60','#E74C3C','#F39C12','#1ABC9C','#8E44AD','#2980B9'];
-  let hash = 0;
-  for (let c of (nombre||'?')) hash = c.charCodeAt(0) + ((hash<<5)-hash);
-  return colors[Math.abs(hash) % colors.length];
-}
-
-// ── Load/Save users from Supabase ──
-async function loadUsers() {
-  if (!_supa || !currentUser) return;
-  try {
-    const { data, error } = await _supa.from('irh_users').select('*').order('created_at',{ascending:true});
-    if (error) throw error;
-    IRH_USERS = data || [];
-    // If no users exist, seed the current auth user as owner
-    if (IRH_USERS.length === 0) {
-      await seedOwnerUser();
-    }
-    // Link current session to irh_users entry
-    await linkCurrentUserRole();
-  } catch(err) {
-    console.warn('loadUsers:', err.message);
-    IRH_USERS = [];
-  }
-}
-
-async function seedOwnerUser() {
-  if (!currentUser) return;
-  try {
-    const nombre = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
-    const payload = {
-      nombre, correo: currentUser.email,
-      password_hash: '', rol: 'owner', estado: 'activo',
-      auth_uid: currentUser.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString()
-    };
-    const { data } = await _supa.from('irh_users').insert(payload).select().single();
-    if (data) IRH_USERS = [data];
-  } catch(e) { console.warn('seedOwner:', e.message); }
-}
-
-async function linkCurrentUserRole() {
-  if (!currentUser) return;
-  const match = IRH_USERS.find(u =>
-    u.auth_uid === currentUser.id || u.correo === currentUser.email
-  );
-  if (match) {
-    currentUser._irhRol = match.rol;
-    currentUser._irhNombre = match.nombre;
-    currentUser._irhId = match.id;
-    currentUser._irhEstado = match.estado;
-  } else {
-    currentUser._irhRol = 'viewer';
-  }
-  updateSidebarUserInfo();
-}
-
-function updateSidebarUserInfo() {
-  if (!currentUser) return;
-  const rol = currentUser._irhRol || 'viewer';
-  const nombre = currentUser._irhNombre || currentUser.email.split('@')[0];
-  const badge = document.getElementById('user-role-badge');
-  if (badge) badge.innerHTML = getRolBadgeHTML(rol);
-  const avatarEl = document.getElementById('user-avatar');
-  if (avatarEl) {
-    avatarEl.textContent = nombre.substring(0,2).toUpperCase();
-    avatarEl.style.background = getAvatarColor(nombre);
-  }
-  document.getElementById('user-name').textContent = nombre;
-  // Show/hide Usuarios nav item
-  const navUsrs = document.getElementById('nav-usuarios');
-  if (navUsrs) navUsrs.style.display = tienePermiso('Gestionar usuarios') ? '' : 'none';
-}
-
-// ── Apply RBAC guards on UI ──
-function applyRBAC() {
-  // Restrict UI elements by permission
-  const guards = [
-    {perm:'Crear proyectos', selectors:['#btn-nuevo-proy-dash','[onclick*="openModal(\'m-proyecto\'"]','[onclick*="openNewProyModal"]']},
-    {perm:'Eliminar proyectos', selectors:['[onclick*="deleteProyecto"]']},
-    {perm:'Gestionar colaboradores', selectors:['[onclick*="openModal(\'m-colaborador\'"]','[onclick*="importarColaboradores"]']},
-    {perm:'Configurar sistema', selectors:['[onclick*="guardarConfig"]']},
-    {perm:'Exportar resultados', selectors:['#btn-export-proj','[onclick*="exportProj"]']},
-  ];
-  guards.forEach(({perm, selectors}) => {
-    if (!tienePermiso(perm)) {
-      selectors.forEach(sel => {
-        document.querySelectorAll(sel).forEach(el => { el.style.display='none'; });
-      });
-    }
-  });
-  // Lock config panel for non-owners
-  if (!tienePermiso('Configurar sistema')) {
-    const cfgSave = document.querySelector('[onclick*="guardarConfig"]');
-    if (cfgSave) cfgSave.disabled = true;
-  }
-}
-
-// ── Panel Usuarios ──
-async function renderPanelUsuarios() {
-  await loadUsers();
-  applyRBAC();
-  renderUsuariosKPIs();
-  renderUsuariosTable();
-  renderPermisosMatrix();
-  // Rol info for current user
-  const rol = currentUser?._irhRol || 'viewer';
-  const infoEl = document.getElementById('usuarios-rol-info');
-  if (infoEl) {
-    infoEl.innerHTML = `Tu rol actual es ${getRolBadgeHTML(rol)} — ${getRolDesc(rol)}`;
-  }
-  // Hide "Nuevo usuario" button for non-owners
-  const btnWrap = document.getElementById('btn-nuevo-usuario-wrap');
-  if (btnWrap) btnWrap.style.display = tienePermiso('Gestionar usuarios') ? '' : 'none';
-}
-
-function getRolDesc(rol) {
-  const descs = {
-    owner: 'Tienes control total del sistema, incluyendo gestión de usuarios y toda la configuración.',
-    admin: 'Puedes gestionar proyectos, colaboradores y exportar resultados. No puedes gestionar usuarios globales.',
-    viewer: 'Acceso de solo lectura. Puedes ver proyectos, resultados y reportes sin modificar nada.'
-  };
-  return descs[rol] || '';
-}
-
-function renderUsuariosKPIs() {
-  const total = IRH_USERS.length;
-  const activos = IRH_USERS.filter(u=>u.estado==='activo').length;
-  const owners = IRH_USERS.filter(u=>u.rol==='owner').length;
-  const admins = IRH_USERS.filter(u=>u.rol==='admin').length;
-  document.getElementById('usuarios-kpis').innerHTML = `
-    <div class="kpi"><div class="kpi-val">${total}</div><div class="kpi-label">Total usuarios</div></div>
-    <div class="kpi"><div class="kpi-val" style="color:var(--green);">${activos}</div><div class="kpi-label">Activos</div></div>
-    <div class="kpi"><div class="kpi-val" style="color:var(--purple);">${owners}</div><div class="kpi-label">Owners</div></div>
-    <div class="kpi"><div class="kpi-val" style="color:var(--blue);">${admins}</div><div class="kpi-label">Admins</div></div>
-  `;
-}
-
-function renderUsuariosTable() {
-  const filter = (document.getElementById('usr-filter')?.value||'').toLowerCase();
-  const filterRol = document.getElementById('usr-filter-rol')?.value||'';
-  const filterEst = document.getElementById('usr-filter-estado')?.value||'';
-  let users = IRH_USERS.filter(u => {
-    const matchText = !filter || (u.nombre||'').toLowerCase().includes(filter) || (u.correo||'').toLowerCase().includes(filter);
-    const matchRol = !filterRol || u.rol === filterRol;
-    const matchEst = !filterEst || u.estado === filterEst;
-    return matchText && matchRol && matchEst;
-  });
-  document.getElementById('usr-count').textContent = `${users.length} usuario${users.length!==1?'s':''}`;
-  const canManage = tienePermiso('Gestionar usuarios');
-  const canAssignRol = tienePermiso('Asignar roles');
-  if (!users.length) {
-    document.getElementById('usuarios-table-wrap').innerHTML = `<div style="text-align:center;padding:2rem;color:var(--muted);font-size:.85rem;">No se encontraron usuarios.</div>`;
-    return;
-  }
-  const rows = users.map(u => {
-    const ini = (u.nombre||u.correo||'?').substring(0,2).toUpperCase();
-    const avColor = getAvatarColor(u.nombre||u.correo);
-    const isCurrentUser = u.auth_uid === currentUser?.id || u.correo === currentUser?.email;
-    const estadoBadge = u.estado==='activo'
-      ? `<span class="badge badge-green">● Activo</span>`
-      : `<span class="badge badge-gray">● Inactivo</span>`;
-    const actionsHTML = canManage ? `
-      <button class="btn btn-ghost btn-xs" onclick="editarUsuario(${u.id})" title="Editar">✏️</button>
-      ${!isCurrentUser ? `<button class="btn btn-${u.estado==='activo'?'danger':'green'} btn-xs" onclick="toggleEstadoUsuario(${u.id})" title="${u.estado==='activo'?'Desactivar':'Activar'}">${u.estado==='activo'?'⏸':'▶️'}</button>` : ''}
-      ${canAssignRol && !isCurrentUser ? `<button class="btn btn-ghost btn-xs" onclick="cambiarRolRapido(${u.id})" title="Cambiar rol">🔄</button>` : ''}
-    ` : '';
-    return `<div class="user-card" style="margin-bottom:.6rem;">
-      <div class="user-card-avatar" style="background:${avColor};">${ini}</div>
-      <div class="user-card-info">
-        <div class="user-card-name">${escHtml(u.nombre||u.correo)} ${isCurrentUser?'<span style="font-size:.62rem;color:var(--muted);">(tú)</span>':''}</div>
-        <div class="user-card-email">${escHtml(u.correo||'')}</div>
-        <div style="margin-top:.3rem;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
-          ${getRolBadgeHTML(u.rol)}
-          ${estadoBadge}
-          <span style="font-size:.6rem;color:var(--muted);">Creado: ${u.created_at ? new Date(u.created_at).toLocaleDateString('es-DO') : '—'}</span>
-        </div>
-      </div>
-      <div class="user-card-actions">${actionsHTML}</div>
-    </div>`;
-  }).join('');
-  document.getElementById('usuarios-table-wrap').innerHTML = rows;
-}
-
-function renderPermisosMatrix() {
-  const body = document.getElementById('permisos-matrix-body');
-  if (!body) return;
-  body.innerHTML = ALL_PERMISOS.map(p => {
-    const ow = ROLES.owner.permisos.includes(p.key);
-    const ad = ROLES.admin.permisos.includes(p.key);
-    const vi = ROLES.viewer.permisos.includes(p.key);
-    const cell = (has) => has
-      ? `<td style="text-align:center;padding:.45rem .8rem;border-bottom:1px solid var(--border);color:var(--green);font-size:.9rem;">✓</td>`
-      : `<td style="text-align:center;padding:.45rem .8rem;border-bottom:1px solid var(--border);color:var(--border);font-size:.9rem;">✗</td>`;
-    return `<tr>
-      <td style="padding:.45rem .8rem;border-bottom:1px solid var(--border);font-weight:600;">${p.key}<div style="font-size:.62rem;color:var(--muted);font-weight:400;">${p.desc}</div></td>
-      ${cell(ow)}${cell(ad)}${cell(vi)}
-    </tr>`;
-  }).join('');
-}
-
-// ── CRUD Usuarios ──
-function openModalNuevoUsuario() {
-  if (!tienePermiso('Gestionar usuarios')) { showToast('Sin permiso','error'); return; }
-  document.getElementById('m-usr-id').value = '';
-  document.getElementById('m-usr-nombre').value = '';
-  document.getElementById('m-usr-correo').value = '';
-  document.getElementById('m-usr-password').value = '';
-  document.getElementById('m-usr-newpassword').value = '';
-  document.getElementById('m-usr-rol').value = 'admin';
-  document.getElementById('m-usr-estado').value = 'activo';
-  document.getElementById('m-usr-title').textContent = '👤 Nuevo usuario';
-  document.getElementById('m-usr-pass-wrap').style.display = '';
-  document.getElementById('m-usr-pass-change-wrap').style.display = 'none';
-  document.getElementById('m-usr-correo').readOnly = false;
-  updateRolDesc();
-  openModal('m-usuario');
-}
-
-function editarUsuario(id) {
-  if (!tienePermiso('Gestionar usuarios')) { showToast('Sin permiso','error'); return; }
-  const u = IRH_USERS.find(x=>x.id===id);
-  if (!u) return;
-  document.getElementById('m-usr-id').value = u.id;
-  document.getElementById('m-usr-nombre').value = u.nombre||'';
-  document.getElementById('m-usr-correo').value = u.correo||'';
-  document.getElementById('m-usr-correo').readOnly = true;
-  document.getElementById('m-usr-rol').value = u.rol||'viewer';
-  document.getElementById('m-usr-estado').value = u.estado||'activo';
-  document.getElementById('m-usr-title').textContent = `✏️ Editar: ${u.nombre||u.correo}`;
-  document.getElementById('m-usr-pass-wrap').style.display = 'none';
-  document.getElementById('m-usr-pass-change-wrap').style.display = '';
-  document.getElementById('m-usr-newpassword').value = '';
-  updateRolDesc();
-  openModal('m-usuario');
-}
-
-function updateRolDesc() {
-  const rol = document.getElementById('m-usr-rol')?.value;
-  const el = document.getElementById('m-usr-rol-desc');
-  if (!el) return;
-  const descs = {
-    owner: '👑 <b>Owner:</b> Control total. Puede crear/eliminar proyectos, gestionar usuarios y toda la configuración del sistema.',
-    admin: '🛠 <b>Admin:</b> Puede gestionar proyectos, colaboradores, ver resultados y exportar. No puede gestionar usuarios globales ni la configuración del sistema.',
-    viewer: '👁 <b>Viewer:</b> Acceso de solo lectura. Puede ver proyectos, resultados y reportes sin crear ni modificar nada.'
-  };
-  el.innerHTML = descs[rol]||'';
-}
-
-async function guardarUsuario() {
-  if (!tienePermiso('Gestionar usuarios')) { showToast('Sin permiso','error'); return; }
-  const id = document.getElementById('m-usr-id').value;
-  const nombre = document.getElementById('m-usr-nombre').value.trim();
-  const correo = document.getElementById('m-usr-correo').value.trim().toLowerCase();
-  const rol = document.getElementById('m-usr-rol').value;
-  const estado = document.getElementById('m-usr-estado').value;
-  const isNew = !id;
-
-  if (!nombre) { showToast('El nombre es requerido','error'); return; }
-  if (!correo || !correo.includes('@')) { showToast('Correo inválido','error'); return; }
-
-  const btn = document.getElementById('btn-guardar-usuario');
-  btn.disabled = true; btn.textContent = 'Guardando…';
-
-  try {
-    if (isNew) {
-      const password = document.getElementById('m-usr-password').value;
-      if (!password || password.length < 8) throw new Error('La contraseña debe tener al menos 8 caracteres.');
-      const dup = IRH_USERS.find(u=>u.correo===correo);
-      if (dup) throw new Error('Ya existe un usuario con ese correo.');
-      const password_hash = await hashPassword(password);
-      // Create Supabase Auth user
-      let auth_uid = null;
-      try {
-        const { data: authData, error: authErr } = await _supa.auth.admin.createUser({
-          email: correo, password, email_confirm: true
-        });
-        if (!authErr && authData?.user) auth_uid = authData.user.id;
-      } catch(e) {
-        // admin.createUser may not be available on anon key — store without auth_uid
-        console.warn('auth.admin.createUser not available, storing user without Supabase Auth link');
-      }
-      const payload = { nombre, correo, password_hash, rol, estado, auth_uid,
-        created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-      const { data, error } = await _supa.from('irh_users').insert(payload).select().single();
-      if (error) throw error;
-      IRH_USERS.push(data);
-      showToast('Usuario creado ✓','success');
-    } else {
-      // Update
-      const updatePayload = { nombre, rol, estado, updated_at: new Date().toISOString() };
-      const newPass = document.getElementById('m-usr-newpassword').value;
-      if (newPass) {
-        if (newPass.length < 8) throw new Error('La nueva contraseña debe tener al menos 8 caracteres.');
-        updatePayload.password_hash = await hashPassword(newPass);
-      }
-      const { data, error } = await _supa.from('irh_users').update(updatePayload).eq('id', id).select().single();
-      if (error) throw error;
-      const idx = IRH_USERS.findIndex(u=>u.id===parseInt(id));
-      if (idx>=0) IRH_USERS[idx] = {...IRH_USERS[idx], ...updatePayload};
-      showToast('Usuario actualizado ✓','success');
-    }
-    closeModal('m-usuario');
-    await linkCurrentUserRole();
-    renderPanelUsuarios();
-  } catch(err) {
-    showToast(err.message,'error');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Guardar usuario';
-  }
-}
-
-async function toggleEstadoUsuario(id) {
-  if (!tienePermiso('Gestionar usuarios')) { showToast('Sin permiso','error'); return; }
-  const u = IRH_USERS.find(x=>x.id===id);
-  if (!u) return;
-  if (u.auth_uid === currentUser?.id) { showToast('No puedes desactivarte a ti mismo','error'); return; }
-  const newEstado = u.estado==='activo' ? 'inactivo' : 'activo';
-  try {
-    await _supa.from('irh_users').update({estado:newEstado, updated_at:new Date().toISOString()}).eq('id',id);
-    const idx = IRH_USERS.findIndex(x=>x.id===id);
-    if (idx>=0) IRH_USERS[idx].estado = newEstado;
-    showToast(`Usuario ${newEstado==='activo'?'activado':'desactivado'} ✓`,'success');
-    renderPanelUsuarios();
-  } catch(err) { showToast(err.message,'error'); }
-}
-
-async function cambiarRolRapido(id) {
-  if (!tienePermiso('Asignar roles')) { showToast('Sin permiso','error'); return; }
-  const u = IRH_USERS.find(x=>x.id===id);
-  if (!u) return;
-  const orden = ['owner','admin','viewer'];
-  const idx = orden.indexOf(u.rol);
-  const newRol = orden[(idx+1) % orden.length];
-  const confirmar = confirm(`¿Cambiar el rol de "${u.nombre||u.correo}" de "${u.rol}" a "${newRol}"?`);
-  if (!confirmar) return;
-  try {
-    await _supa.from('irh_users').update({rol:newRol, updated_at:new Date().toISOString()}).eq('id',id);
-    const i = IRH_USERS.findIndex(x=>x.id===id);
-    if (i>=0) IRH_USERS[i].rol = newRol;
-    showToast(`Rol cambiado a ${newRol} ✓`,'success');
-    renderPanelUsuarios();
-  } catch(err) { showToast(err.message,'error'); }
-}
-
-// ── Helper: toggle password visibility ──
-function togglePassVisibility(inputId, btn) {
-  const inp = document.getElementById(inputId);
-  if (!inp) return;
-  inp.type = inp.type==='password' ? 'text' : 'password';
-  btn.textContent = inp.type==='password' ? '👁 Ver' : '🙈 Ocultar';
-}
-
-// ── Escape HTML helper (if not already defined) ──
-function escHtml(str) {
-  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ── Hook into goPanel to load Usuarios panel ──
-const _origGoPanel = typeof goPanel !== 'undefined' ? goPanel : null;
-
-// ── Patch onLoginSuccess to load users ──
-const _origOnLoginSuccess = onLoginSuccess;
-onLoginSuccess = async function(user) {
-  await _origOnLoginSuccess(user);
-  await loadUsers();
-  applyRBAC();
-};
-
-
 
 
 </script>
