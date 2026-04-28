@@ -807,7 +807,7 @@ CREATE POLICY "anon insert" ON irh_participantes FOR INSERT TO anon WITH CHECK (
       <button class="btn btn-ghost" style="justify-content:center;" onclick="exportProj('pdf')">📕 PDF</button>
       <button class="btn btn-ghost" style="justify-content:center;" onclick="exportProj('word')">📘 Word</button>
       <button class="btn btn-ghost" style="justify-content:center;" onclick="exportProj('pptx')">📑 PowerPoint</button>
-      <button class="btn btn-ghost" style="justify-content:center;" onclick="exportProj('ia')">🤖 Resumen IA</button>
+      <button class="btn btn-ghost" style="justify-content:center;" onclick="exportProj('ia')">🤖 Análisis IA completo</button>
     </div>
     <div class="factions" style="border-top:none;padding-top:.6rem;">
       <button class="btn btn-ghost" onclick="closeModal('m-export-dropdown')">Cerrar</button>
@@ -1722,33 +1722,16 @@ function renderProjItemsHTML(projId, items, tipo) {
             </select>
             <button style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;" onclick="_rmPreg('${projId}','${tipo}',${di},${pi})" title="Eliminar">✕</button>
           </div>
-          ${['multiple','checkbox','desplegable'].includes(pTipo) ? (() => {
-            const ops = (p2.opciones && p2.opciones.length >= 2) ? p2.opciones : ['Opción 1','Opción 2'];
-            const icon = pTipo==='checkbox'?'☐':pTipo==='multiple'?'○':'▾';
-            const atMax = ops.length >= 10;
-            const atMin = ops.length <= 2;
-            return `
-          <div style="margin:4px 0 8px 24px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
-            <div style="font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;">Opciones (${ops.length}/10) — mín. 2</div>
-            ${ops.map((op,oi)=>`
-              <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;">
-                <span style="font-size:.62rem;font-weight:800;color:var(--muted);min-width:16px;text-align:right;">${oi+1}</span>
-                <span style="font-size:.75rem;color:var(--muted);flex-shrink:0;">${icon}</span>
-                <input value="${(op||'').replace(/"/g,'&quot;').replace(/'/g,"&#39;")}"
-                  style="flex:1;padding:4px 7px;border:1.5px solid var(--border);border-radius:5px;font-family:'Nunito',sans-serif;font-size:.76rem;outline:none;transition:border-color .15s;"
-                  onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border)'"
-                  oninput="_setOpt('${tipo}',${di},${pi},${oi},this.value)"
-                  placeholder="Opción ${oi+1}">
-                <button style="background:none;border:none;cursor:pointer;color:${atMin?'var(--border)':'var(--red)'};font-size:.8rem;padding:2px 4px;transition:color .15s;" ${atMin?'disabled title="Mínimo 2 opciones"':''} onclick="_rmOpt('${projId}','${tipo}',${di},${pi},${oi})" title="Eliminar opción">✕</button>
+          ${['multiple','checkbox','desplegable'].includes(pTipo) ? `
+          <div style="margin:4px 0 4px 18px;padding:6px 10px;background:var(--bg);border-radius:6px;">
+            ${(p2.opciones||['Opción 1']).map((op,oi)=>`
+              <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+                <span style="font-size:.7rem;color:var(--muted);">${pTipo==='checkbox'?'☐':pTipo==='multiple'?'○':'◉'}</span>
+                <input value="${(op||'').replace(/"/g,'&quot;')}" style="flex:1;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-family:'Nunito',sans-serif;font-size:.74rem;outline:none;" oninput="_setOpt('${tipo}',${di},${pi},${oi},this.value)">
+                <button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;" onclick="_rmOpt('${projId}','${tipo}',${di},${pi},${oi})">✕</button>
               </div>`).join('')}
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-              <button style="background:none;border:none;cursor:${atMax?'not-allowed':'pointer'};color:${atMax?'var(--muted)':'var(--purple)'};font-size:.72rem;font-weight:800;padding:3px 0;display:flex;align-items:center;gap:3px;" ${atMax?'disabled':''} onclick="_addOpt('${projId}','${tipo}',${di},${pi})" title="${atMax?'Máximo 10 opciones':'Agregar opción'}">
-                + Agregar opción ${atMax?'<span style="font-size:.6rem;color:var(--muted);">(máx. 10)</span>':''}
-              </button>
-              ${atMax?'<span style="font-size:.62rem;color:var(--yellow);font-weight:700;">⚠ Límite alcanzado</span>':''}
-            </div>
-          </div>`;
-          })() : ''}
+            <button style="background:none;border:none;cursor:pointer;color:var(--purple);font-size:.72rem;font-weight:700;padding:2px 0;" onclick="_addOpt('${projId}','${tipo}',${di},${pi})">+ Agregar opción</button>
+          </div>` : ''}
           ${pTipo==='lineal' ? `
           <div style="margin:4px 0 4px 18px;display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--muted);">
             <span>Mín:</span><input type="number" value="${p2.linMin||1}" min="0" max="10" style="width:46px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:.72rem;" oninput="_setLineal('${tipo}',${di},${pi},'linMin',this.value)">
@@ -1770,37 +1753,25 @@ function _setTT(tipo,di,pi,val){
   const c=a[di].preguntas[pi];
   const t=typeof c==='object'?(c.texto||''):(c||'');
   const needsOpts=['multiple','checkbox','desplegable'];
-  let opts=undefined;
-  if(needsOpts.includes(val)){
-    // Preserve existing options if valid, otherwise seed with 2
-    const existing=c.opciones||[];
-    opts=existing.length>=2?existing:['Opción 1','Opción 2'];
-  }
+  const opts=needsOpts.includes(val)?(c.opciones||['Opción 1','Opción 2']):undefined;
   const linMin=val==='lineal'?(c.linMin||1):undefined;
   const linMax=val==='lineal'?(c.linMax||5):undefined;
   a[di].preguntas[pi]={texto:t,tipo:val,...(opts?{opciones:opts}:{}),...(linMin!==undefined?{linMin,linMax}:{})};
   document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(currentProjectId,a,tipo);
 }
 function _setLineal(tipo,di,pi,field,val){const a=tipo==='dim'?_editDims:_editComps;a[di].preguntas[pi][field]=parseInt(val)||1;}
-function _addOpt(projId,tipo,di,pi){
-  const a=tipo==='dim'?_editDims:_editComps;
-  if(!a[di]||!a[di].preguntas[pi]) return;
-  const ops=a[di].preguntas[pi].opciones=a[di].preguntas[pi].opciones||['Opción 1','Opción 2'];
-  if(ops.length>=10){showToast('Máximo 10 opciones por pregunta','error');return;}
-  ops.push('Opción '+(ops.length+1));
-  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);
+function _addOpt(tipo,di,pi){
+  a[di].preguntas[pi].opciones=a[di].preguntas[pi].opciones||[];
+  a[di].preguntas[pi].opciones.push('Nueva opción');
+  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(currentProjectId,a,tipo);
 }
-function _rmOpt(projId,tipo,di,pi,oi){
+function _rmOpt(tipo,di,pi,oi){
   const a=tipo==='dim'?_editDims:_editComps;
-  if(!a[di]||!a[di].preguntas[pi]) return;
-  const ops=a[di].preguntas[pi].opciones||[];
-  if(ops.length<=2){showToast('Mínimo 2 opciones requeridas','error');return;}
-  ops.splice(oi,1);
-  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);
+  a[di].preguntas[pi].opciones.splice(oi,1);
+  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(currentProjectId,a,tipo);
 }
 function _setOpt(tipo,di,pi,oi,val){
   const a=tipo==='dim'?_editDims:_editComps;
-  if(!a[di]||!a[di].preguntas[pi]||!a[di].preguntas[pi].opciones) return;
   a[di].preguntas[pi].opciones[oi]=val;
 }
 function _addPreg(projId,tipo,di){const a=tipo==='dim'?_editDims:_editComps;a[di].preguntas.push({texto:'Nueva pregunta',tipo:'escala'});document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);}
@@ -1838,22 +1809,6 @@ function addProjObj() {
 
 async function guardarCuestionarioProj() {
   const p = PROYECTOS.find(x=>x.id===currentProjectId); if (!p) return;
-  // ── Validar opciones antes de guardar ──
-  const needsOpts=['multiple','checkbox','desplegable'];
-  const items = p.tipo==='clima' ? _editDims : _editComps;
-  for(let di=0;di<items.length;di++){
-    for(let pi=0;pi<(items[di].preguntas||[]).length;pi++){
-      const preg=items[di].preguntas[pi];
-      if(typeof preg!=='object') continue;
-      if(!needsOpts.includes(preg.tipo)) continue;
-      const ops=preg.opciones||[];
-      if(ops.length<2){showToast(`"${preg.texto||'Pregunta '+(pi+1)}": mínimo 2 opciones requeridas`,'error');return;}
-      const vacias=ops.filter(o=>!o||!o.trim());
-      if(vacias.length>0){showToast(`"${preg.texto||'Pregunta '+(pi+1)}": hay opciones vacías`,'error');return;}
-      const unicas=new Set(ops.map(o=>o.trim().toLowerCase()));
-      if(unicas.size<ops.length){showToast(`"${preg.texto||'Pregunta '+(pi+1)}": hay opciones duplicadas`,'error');return;}
-    }
-  }
   if (p.tipo==='clima') p.dimensiones = JSON.parse(JSON.stringify(_editDims));
   else { p.competencias = JSON.parse(JSON.stringify(_editComps)); p.objetivos = JSON.parse(JSON.stringify(_editObjs)); }
   saveDB('irh_proyectos',PROYECTOS);
@@ -2538,18 +2493,36 @@ function renderTabAnalisis(p, resp, escala) {
   </div>
 
   <div class="card">
-    <div class="card-header"><span class="card-title">🤖 Análisis con IA</span></div>
+    <div class="card-header">
+      <span class="card-title">🤖 Análisis con IA — Google Gemini</span>
+      <span id="ia-modo-label" style="font-size:.72rem;color:var(--purple);font-weight:700;"></span>
+    </div>
     <div class="card-body">
-      <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem;">
-        <button class="btn btn-primary btn-sm" onclick="generarIA('global')">📋 Resumen ejecutivo</button>
-        <button class="btn btn-ghost btn-sm"   onclick="generarIA('riesgos')">🚨 Detectar riesgos</button>
-        <button class="btn btn-ghost btn-sm"   onclick="generarIA('dept')">🏢 Por departamento</button>
-        <button class="btn btn-ghost btn-sm"   onclick="generarIA('recom')">💡 Recomendaciones</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.9rem;">
+        <button class="btn btn-primary btn-sm" style="justify-content:center;" onclick="generarIA('global')">
+          📋 Informe ejecutivo completo
+        </button>
+        <button class="btn btn-ghost btn-sm" style="justify-content:center;" onclick="generarIA('riesgos')">
+          🚨 Reporte de riesgos
+        </button>
+        <button class="btn btn-ghost btn-sm" style="justify-content:center;" onclick="generarIA('dept')">
+          🏢 Análisis por segmento
+        </button>
+        <button class="btn btn-ghost btn-sm" style="justify-content:center;" onclick="generarIA('recom')">
+          💡 Plan de recomendaciones
+        </button>
       </div>
-      <div id="ia-loading" style="display:none;text-align:center;padding:1.5rem;"><div style="font-size:1.5rem;animation:spin .8s linear infinite;display:inline-block;">⚙️</div><div style="font-weight:700;margin-top:.5rem;color:var(--purple);">Generando análisis con IA…</div></div>
-      <div id="ia-result"  style="display:none;line-height:1.7;font-size:.85rem;white-space:pre-wrap;background:var(--bg);border-radius:var(--rs);padding:1rem;border:1px solid var(--border);max-height:400px;overflow-y:auto;"></div>
-      <div id="ia-actions" style="display:none;gap:.4rem;margin-top:.6rem;">
-        <button class="btn btn-ghost btn-sm" onclick="exportIAText()">⬇ Exportar texto</button>
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:.8rem;line-height:1.6;">
+        💡 <b>Informe ejecutivo</b> genera el análisis completo con todas las secciones del informe (resumen, dimensiones, cualitativo, recomendaciones). Los demás modos son análisis especializados.
+      </div>
+      <div id="ia-loading" style="display:none;align-items:center;gap:.7rem;padding:1.2rem;background:var(--purple-pale);border-radius:var(--rs);border:1px solid var(--purple-mid);">
+        <div style="width:20px;height:20px;border:3px solid var(--purple-mid);border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;"></div>
+        <span id="ia-loading-msg" style="font-weight:700;font-size:.82rem;color:var(--purple);">Generando análisis…</span>
+      </div>
+      <div id="ia-result" style="display:none;background:var(--bg);border-radius:var(--rs);padding:1.2rem 1.4rem;border:1px solid var(--border);max-height:600px;overflow-y:auto;"></div>
+      <div id="ia-actions" style="display:none;gap:.4rem;margin-top:.7rem;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" onclick="exportIAText()">⬇ Exportar TXT</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportIAPDF()">📕 Exportar PDF</button>
         <button class="btn btn-ghost btn-sm" onclick="generarIA('global')">↺ Regenerar</button>
       </div>
     </div>
@@ -2696,56 +2669,238 @@ function dlChart(canvasId, filename) {
 
 const IA_FN_URL = `${SUPA_URL}/functions/v1/ai-analisis`;
 
-// Build structured prompt per the defined format
-function buildIAPrompt(p, resp, isClima, items, escala) {
+// ── Build full structured prompt ──
+function buildIAPrompt(p, resp, isClima, items, escala, modo='global') {
+  // ── Cuantitativo ──
   const dimStats = getDimStats(items, resp, isClima, escala);
-  const scores   = resp.map(r=>r.score??calculateScore(r,p));
-  const avgScore = scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2):0;
-  const pct      = Math.round(parseFloat(avgScore)/escala*100);
-  const depts    = [...new Set(resp.map(r=>r.dept||r.ev_dept).filter(Boolean))];
-  const sorted   = [...dimStats].sort((a,b)=>b.pct-a.pct);
-  const deptData = depts.map(d=>{
-    const dd=resp.filter(r=>(r.dept||r.ev_dept)===d);
-    const sc=dd.map(r=>r.score??calculateScore(r,p));
-    return {dept:d,n:dd.length,avg:sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):0};
+  const scores   = resp.map(r => r.score ?? calculateScore(r,p));
+  const avgScore = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
+  const pctGlobal = Math.round((avgScore/escala)*100);
+
+  // Desviación estándar por dimensión
+  const dimStatsExt = items.map((d,di) => {
+    const vals = [];
+    resp.forEach(r => d.preguntas.forEach((_,pi) => {
+      const v = isClima ? r.dimResp?.['dim_'+di+'_'+pi] : r.compResp?.['comp_'+di+'_'+pi];
+      if (typeof v === 'number') vals.push(v);
+    }));
+    const avg = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+    const std = vals.length > 1 ? Math.sqrt(vals.reduce((a,v)=>a+Math.pow(v-avg,2),0)/vals.length) : 0;
+    const pct = Math.round((avg/escala)*100);
+    const clasif = pct>=80?'Fortaleza':pct>=60?'Aceptable':'Brecha';
+    return { titulo: d.titulo, promedio: avg.toFixed(2), pct, desv_std: std.toFixed(2), clasif };
   });
-  const data = {
-    empresa:   p.empresa,
-    tipo:      isClima?'Clima Organizacional':'Evaluación de Desempeño',
-    periodo:   p.periodo||'—',
-    total_resp: resp.length,
-    escala:    `1–${escala}`,
-    score_pct: `${pct}%`,
-    score_promedio: `${avgScore}/${escala}`,
-    clasificacion: sorted[0]?.pct>=80?'Favorable':sorted[0]?.pct>=65?'Aceptable':'En riesgo',
-    dimensiones: dimStats.map(d=>({nombre:d.titulo, promedio:`${d.avg.toFixed(2)}/${escala}`, pct:`${d.pct}%`})),
-    por_departamento: deptData,
+
+  // eNPS
+  const promotores  = resp.filter(r=>r.recomienda==='Sí, definitivamente').length;
+  const detractores = resp.filter(r=>r.recomienda==='No').length;
+  const neutrales   = resp.length - promotores - detractores;
+  const eNPS        = resp.length ? Math.round((promotores-detractores)/resp.length*100) : null;
+
+  // Segmentos por área/dept
+  const depts = [...new Set(resp.map(r=>r.dept||r.ev_dept).filter(Boolean))];
+  const segmentos = depts.map(d => {
+    const dd = resp.filter(r=>(r.dept||r.ev_dept)===d);
+    const sc = dd.map(r=>r.score??calculateScore(r,p));
+    const avg = sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length):0;
+    return { area: d, n: dd.length, score_pct: Math.round(avg), clasif: avg>=80?'Fortaleza':avg>=60?'Aceptable':'Brecha' };
+  });
+
+  // Segmentos por empresa
+  const empresas = [...new Set(resp.map(r=>r.empresa||r.ev_empresa).filter(Boolean))];
+  const segEmpresa = empresas.map(e => {
+    const dd = resp.filter(r=>(r.empresa||r.ev_empresa)===e);
+    const sc = dd.map(r=>r.score??calculateScore(r,p));
+    const avg = sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length):0;
+    return { empresa: e, n: dd.length, score_pct: Math.round(avg) };
+  });
+
+  // Segmentos por cargo/nivel
+  const niveles = [...new Set(resp.map(r=>r.nivel||r.cargo).filter(Boolean))];
+  const segNivel = niveles.map(n => {
+    const dd = resp.filter(r=>(r.nivel||r.cargo)===n);
+    const sc = dd.map(r=>r.score??calculateScore(r,p));
+    const avg = sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length):0;
+    return { cargo: n, n: dd.length, score_pct: Math.round(avg) };
+  });
+
+  // Ranking dimensiones
+  const rankDims = [...dimStatsExt].sort((a,b)=>b.pct-a.pct);
+
+  // ── Cualitativo ──
+  const respAbiertas = [];
+  resp.forEach(r => {
+    items.forEach((d,di) => {
+      d.preguntas.forEach((preg,pi) => {
+        const tipo = typeof preg==='object'?(preg.tipo||'escala'):'escala';
+        if (tipo==='abierta'||tipo==='corta') {
+          const v = isClima ? r.dimResp?.['dim_'+di+'_'+pi] : r.compResp?.['comp_'+di+'_'+pi];
+          if (v && typeof v==='string' && v.trim().length>3) {
+            respAbiertas.push({ dimension: d.titulo, texto: v.trim() });
+          }
+        }
+      });
+    });
+    // comentarios adicionales genéricos
+    if (r.comentarios && typeof r.comentarios==='string' && r.comentarios.trim().length>3)
+      respAbiertas.push({ dimension: 'General', texto: r.comentarios.trim() });
+    if (r.fortalezas && typeof r.fortalezas==='string' && r.fortalezas.trim().length>3)
+      respAbiertas.push({ dimension: 'Fortalezas', texto: r.fortalezas.trim() });
+    if (r.oportunidades && typeof r.oportunidades==='string' && r.oportunidades.trim().length>3)
+      respAbiertas.push({ dimension: 'Oportunidades', texto: r.oportunidades.trim() });
+  });
+  // Deduplicar
+  const uniqAbiertas = respAbiertas.filter((v,i,a)=>a.findIndex(x=>x.texto===v.texto)===i).slice(0,40);
+
+  // Perfil demográfico
+  const perfil = {
+    total_participantes: resp.length,
+    areas: depts.length,
+    empresas: empresas.length,
+    cargos: niveles.length,
+    distribucion_area: segmentos.map(s=>`${s.area} (n=${s.n})`).join(', ') || 'No especificado',
+    distribucion_empresa: segEmpresa.map(s=>`${s.empresa} (n=${s.n})`).join(', ') || 'No especificado',
+    distribucion_cargo: segNivel.map(s=>`${s.cargo} (n=${s.n})`).join(', ') || 'No especificado',
   };
-  return `Analiza los siguientes resultados de evaluación y genera un informe claro, breve y profesional.
 
-Datos:
-${JSON.stringify(data, null, 2)}
+  const indiceGlobal = pctGlobal;
+  const clasificacionGlobal = indiceGlobal>=80?'Favorable / Fortaleza':indiceGlobal>=60?'Aceptable':indiceGlobal>=40?'En riesgo':'Crítico';
 
-Instrucciones:
-- Identifica exactamente 2 fortalezas principales
-- Identifica exactamente 2 debilidades relevantes
-- Da exactamente 2 recomendaciones prácticas y accionables
-- Usa lenguaje profesional, directo y fácil de entender
-- No repitas datos numéricos innecesariamente
-- No inventes información fuera de los datos
+  const datosEstructurados = {
+    proyecto: {
+      empresa: p.empresa,
+      nombre: p.nombre,
+      tipo: isClima?'Clima Organizacional':'Evaluación de Desempeño',
+      periodo: p.periodo||'—',
+      escala: `1–${escala}`,
+    },
+    perfil_participantes: perfil,
+    resultados_generales: {
+      indice_global_pct: indiceGlobal,
+      clasificacion_global: clasificacionGlobal,
+      promedio_escala: `${avgScore.toFixed(2)}/${escala}`,
+      eNPS: eNPS !== null ? { valor: eNPS, promotores, neutrales, detractores } : 'No aplica',
+    },
+    dimensiones: dimStatsExt,
+    ranking_dimensiones: {
+      top_fortalezas: rankDims.filter(d=>d.pct>=60).slice(0,3).map(d=>`${d.titulo} (${d.pct}%)`),
+      top_brechas: rankDims.filter(d=>d.pct<60).slice(-3).map(d=>`${d.titulo} (${d.pct}%)`),
+    },
+    segmentos: {
+      por_area: segmentos,
+      por_empresa: segEmpresa,
+      por_cargo: segNivel,
+    },
+    respuestas_abiertas: uniqAbiertas.length ? uniqAbiertas : 'Sin respuestas cualitativas',
+  };
 
-Formato de respuesta:
-Fortalezas:
-- ...
-- ...
+  const modoInstrucciones = {
+    global: `Genera un INFORME EJECUTIVO COMPLETO con estas secciones exactas:
 
-Debilidades:
-- ...
-- ...
+1. RESUMEN EJECUTIVO
+   - Nivel general del clima (usa el índice global y su clasificación)
+   - 3 hallazgos principales más importantes
+   - Principales riesgos identificados
 
-Recomendaciones:
-- ...
-- ...`;
+2. RESULTADOS POR DIMENSIÓN
+   Para cada dimensión: score, clasificación (Fortaleza/Aceptable/Brecha) e interpretación de 1-2 líneas
+
+3. ANÁLISIS CUALITATIVO
+   - Top 5 temas positivos más frecuentes en los comentarios
+   - Top 5 temas de mejora más frecuentes
+   - 2-3 citas representativas (transcribe textual si las hay)
+   - Distribución de sentimiento general (positivo/neutral/negativo estimado)
+
+4. SEGMENTACIÓN
+   - Áreas con mejor y peor resultado
+   - Diferencias significativas entre segmentos
+   - Brechas internas relevantes
+
+5. HALLAZGOS CLAVE
+   Lista de 5 insights priorizados, específicos y basados en evidencia
+
+6. RECOMENDACIONES
+   Para cada recomendación indica: acción concreta, área responsable, prioridad (Alta/Media/Baja) y resultado esperado
+   Mínimo 5 recomendaciones`,
+
+    riesgos: `Analiza los datos y genera un REPORTE DE RIESGOS ORGANIZACIONALES:
+
+1. RIESGOS CRÍTICOS (score <60%)
+   - Dimensiones en estado crítico
+   - Áreas de mayor riesgo
+   - Señales de alerta en respuestas abiertas
+
+2. RIESGOS POTENCIALES (60-70%)
+   - Áreas que podrían deteriorarse
+   - Patrones de dispersión alta (desv. std elevada)
+
+3. INDICADORES DE ROTACIÓN
+   - Análisis del eNPS si aplica
+   - Señales de insatisfacción en comentarios
+
+4. PLAN DE ACCIÓN URGENTE
+   - Top 3 acciones inmediatas (próximas 4 semanas)
+   - Responsables sugeridos
+   - Métricas de seguimiento`,
+
+    dept: `Genera un ANÁLISIS COMPARATIVO POR SEGMENTO:
+
+1. RANKING DE ÁREAS
+   - Tabla comparativa con score de cada área
+   - Clasificación por área (Fortaleza/Aceptable/Brecha)
+
+2. BRECHAS INTERNAS
+   - Diferencia entre el área mejor y peor evaluada
+   - Dimensiones donde más varían los resultados entre áreas
+
+3. PATRONES POR CARGO/NIVEL
+   - Diferencias de percepción entre jerarquías
+   - Implicaciones para gestión diferenciada
+
+4. RECOMENDACIONES SEGMENTADAS
+   - Acciones específicas por área
+   - Priorización según nivel de brecha`,
+
+    recom: `Genera un PLAN DE RECOMENDACIONES ESTRATÉGICAS completo:
+
+1. RECOMENDACIONES DE ALTO IMPACTO (implementar en 1-3 meses)
+   Para cada una: qué hacer, cómo, quién, cuándo y qué medir
+
+2. RECOMENDACIONES DE MEDIANO PLAZO (3-6 meses)
+   Iniciativas estructurales para dimensiones en estado Aceptable
+
+3. RECOMENDACIONES DE LARGO PLAZO (6-12 meses)
+   Transformaciones culturales necesarias
+
+4. MÉTRICAS DE SEGUIMIENTO
+   - KPIs sugeridos para medir avance
+   - Frecuencia de medición recomendada
+
+5. QUICK WINS
+   - 3 acciones de bajo costo y alto impacto que se pueden implementar esta semana`,
+  };
+
+  const sistemPrompt = `Eres un consultor experto en clima organizacional y gestión del talento humano de IntraRHecursos. 
+Tu tarea es generar informes de consultoría de alta calidad, específicos, accionables y basados exclusivamente en los datos proporcionados.
+
+REGLAS ESTRICTAS:
+- NO generes texto genérico ni frases de relleno
+- NO repitas información ya presentada en otro punto
+- SIEMPRE cita números concretos del dataset cuando hagas afirmaciones
+- Usa lenguaje profesional de consultoría en español
+- Cada insight debe estar respaldado por al menos un dato del dataset
+- Si hay respuestas cualitativas, cítalas textualmente (máx 15 palabras por cita)
+- Si no hay datos suficientes para una sección, indícalo explícitamente`;
+
+  return `${sistemPrompt}
+
+━━━ DATOS DEL PROYECTO ━━━
+${JSON.stringify(datosEstructurados, null, 2)}
+
+━━━ INSTRUCCIONES ━━━
+${modoInstrucciones[modo] || modoInstrucciones.global}
+
+Responde en español. Sé específico. Usa los datos reales del proyecto.`;
 }
 
 async function callIA(prompt) {
@@ -2790,8 +2945,8 @@ async function callIA(prompt) {
       },
       body: JSON.stringify({
         model: 'gemini-2.0-flash',
-        max_tokens: 800,
-        temperature: 0.4,
+        max_tokens: 3000,
+        temperature: 0.3,
         messages: [{ role: 'user', content: prompt }]
       })
     });
@@ -2811,40 +2966,159 @@ async function probarIA() {
   if (el) { el.textContent = 'El análisis con IA está disponible en la pestaña Análisis de cada proyecto.'; el.style.color='var(--muted)'; }
 }
 
-async function generarIA(tipo) {
+async function generarIA(modo) {
   const p = PROYECTOS.find(x=>x.id===currentProjectId); if (!p) return;
   const resp = RESPUESTAS.filter(r=>r.proyectoId===currentProjectId);
   if (!resp.length) { showToast('No hay respuestas para analizar','error'); return; }
+
   const loadEl = document.getElementById('ia-loading');
   const resEl  = document.getElementById('ia-result');
   const actEl  = document.getElementById('ia-actions');
-  if (loadEl) loadEl.style.display='block';
-  if (resEl)  { resEl.style.display='none'; resEl.textContent=''; }
+  const modoEl = document.getElementById('ia-modo-label');
+
+  const modoLabels = {
+    global: '📋 Informe ejecutivo completo',
+    riesgos: '🚨 Reporte de riesgos',
+    dept: '🏢 Análisis por segmento',
+    recom: '💡 Plan de recomendaciones',
+  };
+
+  if (loadEl) { loadEl.style.display='flex'; const msgEl=document.getElementById('ia-loading-msg'); if(msgEl) msgEl.textContent='Generando ' + (modoLabels[modo]||'análisis') + '…'; }
+  if (resEl)  { resEl.style.display='none'; resEl.innerHTML=''; }
+  if (actEl)  { actEl.style.display='none'; }
+  if (modoEl) modoEl.textContent = modoLabels[modo]||'';
+
   const escala  = parseInt(p.escala)||5;
   const isClima = p.tipo==='clima';
   const items   = isClima?(p.dimensiones||DEFAULT_DIMS):(p.competencias||DEFAULT_COMPS);
-  const prompt  = buildIAPrompt(p, resp, isClima, items, escala);
+  const prompt  = buildIAPrompt(p, resp, isClima, items, escala, modo);
+
   try {
     const text = await callIA(prompt);
-    if (resEl) { resEl.textContent=text; resEl.style.display='block'; }
-    if (actEl) { actEl.style.display='flex'; }
+    if (resEl) {
+      resEl.innerHTML = formatIAOutput(text);
+      resEl.style.display='block';
+    }
+    if (actEl) actEl.style.display='flex';
+    // Store for export
+    window._lastIAText = text;
+    window._lastIAModo = modoLabels[modo]||modo;
   } catch(err) {
     let msg = err.message;
     if (msg.includes('límite') || msg.includes('limit') || msg.includes('5')) {
       msg = '⏳ Has alcanzado el límite de 5 análisis hoy. Regresa mañana o contacta a IntraRHecursos para ampliar tu cuota.';
     }
-    if (resEl) { resEl.textContent = '❌ '+msg; resEl.style.display='block'; }
+    if (resEl) { resEl.innerHTML = `<div style="color:var(--red);padding:.5rem;">❌ ${msg}</div>`; resEl.style.display='block'; }
     showToast('Error IA: '+err.message,'error');
   }
   finally { if (loadEl) loadEl.style.display='none'; }
 }
 
+// ── Formatear salida IA con secciones visuales ──
+function formatIAOutput(text) {
+  if (!text) return '';
+  // Convertir secciones numeradas y encabezados en HTML con estilo
+  let html = text
+    // Encabezados tipo "1. RESUMEN EJECUTIVO" o "## RESUMEN"
+    .replace(/^(#{1,3})\s+(.+)$/gm, (_,h,t)=>`<div style="font-size:${h.length===1?'.95':'0.85'}rem;font-weight:900;color:var(--purple);margin:1.2rem 0 .4rem;padding-bottom:.3rem;border-bottom:2px solid var(--purple-mid);text-transform:uppercase;letter-spacing:.04em;">${t}</div>`)
+    .replace(/^(\d+)\.\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\/\(\)]+)$/gm, (_,n,t)=>`<div style="font-size:.88rem;font-weight:900;color:var(--purple);margin:1.1rem 0 .35rem;padding:.4rem .7rem;background:var(--purple-pale);border-left:3px solid var(--purple);border-radius:0 var(--rs) var(--rs) 0;">${n}. ${t}</div>`)
+    // Sub-encabezados tipo "**Texto:**"
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    // Listas con guión o asterisco
+    .replace(/^[-*•]\s+(.+)$/gm, '<div style="display:flex;gap:.5rem;margin:.25rem 0 .25rem 1rem;font-size:.83rem;line-height:1.55;"><span style="color:var(--purple);flex-shrink:0;margin-top:.1rem;">▸</span><span>$1</span></div>')
+    // Sub-listas con espacios
+    .replace(/^\s{2,4}[-*•]\s+(.+)$/gm, '<div style="display:flex;gap:.4rem;margin:.15rem 0 .15rem 2rem;font-size:.8rem;color:var(--muted);"><span>◦</span><span>$1</span></div>')
+    // Prioridades
+    .replace(/\b(Alta|ALTA)\b/g, '<span style="background:#fdecea;color:var(--red);font-size:.65rem;font-weight:800;padding:.1rem .35rem;border-radius:3px;">ALTA</span>')
+    .replace(/\b(Media|MEDIA)\b/g, '<span style="background:var(--yellow-pale);color:var(--yellow);font-size:.65rem;font-weight:800;padding:.1rem .35rem;border-radius:3px;">MEDIA</span>')
+    .replace(/\b(Baja|BAJA)\b/g, '<span style="background:var(--green-pale);color:var(--green);font-size:.65rem;font-weight:800;padding:.1rem .35rem;border-radius:3px;">BAJA</span>')
+    // Clasificaciones
+    .replace(/\b(Fortaleza|FORTALEZA)\b/g, '<span style="background:var(--green-pale);color:var(--green);font-size:.65rem;font-weight:800;padding:.1rem .35rem;border-radius:3px;">FORTALEZA</span>')
+    .replace(/\b(Brecha|BRECHA)\b/g, '<span style="background:#fdecea;color:var(--red);font-size:.65rem;font-weight:800;padding:.1rem .35rem;border-radius:3px;">BRECHA</span>')
+    .replace(/\b(Aceptable|ACEPTABLE)\b/g, '<span style="background:var(--blue-pale);color:var(--blue);font-size:.65rem;font-weight:800;padding:.1rem .35rem;border-radius:3px;">ACEPTABLE</span>')
+    // Saltos de línea dobles → separador
+    .replace(/\n{2,}/g, '<div style="height:.4rem;"></div>')
+    // Saltos simples restantes
+    .replace(/\n/g, '<br>');
+  return `<div style="line-height:1.65;font-size:.84rem;color:var(--text);">${html}</div>`;
+}
+
 function exportIAText() {
-  const text = document.getElementById('ia-result')?.textContent; if (!text) return;
+  const text = window._lastIAText || document.getElementById('ia-result')?.innerText;
+  if (!text) { showToast('No hay análisis generado','error'); return; }
   const p = PROYECTOS.find(x=>x.id===currentProjectId);
-  const blob=new Blob([text],{type:'text/plain;charset=utf-8;'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=`IntraRH_IA_${p?.empresa||'Proyecto'}_${today()}.txt`; a.click();
+  const modo = window._lastIAModo || 'Análisis IA';
+  const header = `IntraRHecursos · ${p?.empresa||'Proyecto'} · ${p?.periodo||''}\n${modo}\nGenerado: ${new Date().toLocaleString('es-DO')}\n${'─'.repeat(60)}\n\n`;
+  const blob = new Blob([header+text], {type:'text/plain;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `IntraRH_IA_${p?.empresa||'Proyecto'}_${today()}.txt`;
+  a.click();
+  showToast('✅ Texto exportado','success');
+}
+
+async function exportIAPDF() {
+  const text = window._lastIAText;
+  if (!text) { showToast('Genera un análisis primero','error'); return; }
+  const p = PROYECTOS.find(x=>x.id===currentProjectId);
+  const modo = window._lastIAModo || 'Análisis IA';
+  if (!window.jspdf?.jsPDF) { showToast('jsPDF no disponible','error'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const C = getProjectColors(p);
+  const W = 210, H = 297;
+  const margin = 18;
+
+  // Portada
+  doc.setFillColor(...C.dark); doc.rect(0,0,W,H,'F');
+  doc.setFillColor(...C.primary); doc.rect(0,0,W,55,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(22); doc.setFont(undefined,'bold');
+  doc.text('Análisis con Inteligencia Artificial', margin, 24);
+  doc.setFontSize(13); doc.setFont(undefined,'normal');
+  doc.text(`${p?.empresa||'Proyecto'} · ${p?.periodo||''}`, margin, 34);
+  doc.setFontSize(10);
+  doc.text(modo, margin, 42);
+  doc.setFontSize(9); doc.setTextColor(200,210,230);
+  doc.text(`IntraRHecursos · Generado: ${new Date().toLocaleString('es-DO')}`, margin, 50);
+
+  // Contenido
+  doc.setTextColor(230,235,245);
+  doc.setFontSize(9.5); doc.setFont(undefined,'normal');
+  const lines = doc.splitTextToSize(text.replace(/[^\x00-\x7E\u00C0-\u024F]/g,' '), W - margin*2);
+  let y = 66;
+  lines.forEach(line => {
+    if (y > H - 14) {
+      doc.addPage();
+      doc.setFillColor(...C.dark); doc.rect(0,0,W,H,'F');
+      y = 18;
+    }
+    const isHeader = /^\d+\.\s+[A-Z]/.test(line) || /^#{1,3}\s/.test(line);
+    if (isHeader) {
+      y += 3;
+      doc.setFont(undefined,'bold');
+      doc.setTextColor(...C.accent);
+      doc.setFontSize(10);
+    } else {
+      doc.setFont(undefined,'normal');
+      doc.setTextColor(225,232,242);
+      doc.setFontSize(9.5);
+    }
+    doc.text(line.replace(/^#{1,3}\s/,'').replace(/^\d+\.\s+/,''), margin + (line.startsWith('-')||line.startsWith('•')?4:0), y);
+    y += isHeader ? 6 : 5;
+  });
+
+  // Footer
+  const pageCount = doc.getNumberOfPages();
+  for (let i=1;i<=pageCount;i++) {
+    doc.setPage(i);
+    doc.setFillColor(...C.primary); doc.rect(0,H-10,W,10,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(7.5);
+    doc.text(`IntraRHecursos · ${p?.empresa||''} · Pág. ${i}/${pageCount}`, margin, H-3.5);
+  }
+
+  doc.save(`IntraRH_IA_${p?.empresa||'Proyecto'}_${today()}.pdf`);
+  showToast('✅ PDF exportado','success');
 }
 
 
@@ -2972,12 +3246,12 @@ function renderTabInformes(p, resp, escala) {
         <div style="font-size:.68rem;color:var(--muted);line-height:1.5;">Datos crudos para análisis externo</div>
       </div>
     </div>
-    <div class="card" style="cursor:pointer;transition:all .15s;overflow:hidden;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''" onclick="goProjTab('analisis',document.getElementById('nav-proj-analisis'))">
+    <div class="card" style="cursor:pointer;transition:all .15s;overflow:hidden;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''" onclick="goProjTab('analisis',document.getElementById('nav-proj-analisis'));setTimeout(()=>generarIA('global'),400)">
       <div style="height:5px;background:linear-gradient(90deg,var(--purple),var(--purple-l));"></div>
       <div class="card-body" style="text-align:center;padding:1.5rem .8rem;">
         <div style="font-size:2.4rem;margin-bottom:.5rem;">🤖</div>
-        <div style="font-weight:900;font-size:.9rem;margin-bottom:.3rem;">Análisis IA</div>
-        <div style="font-size:.68rem;color:var(--muted);line-height:1.5;">Resumen · Riesgos · Recomendaciones</div>
+        <div style="font-weight:900;font-size:.9rem;margin-bottom:.3rem;">Análisis IA Completo</div>
+        <div style="font-size:.68rem;color:var(--muted);line-height:1.5;">Informe ejecutivo · Riesgos · Cualitativo · Recomendaciones</div>
       </div>
     </div>
   </div>
@@ -4508,22 +4782,22 @@ function renderClimaSec(areaId, step, resp, p) {
               </div>`;
             }
             if (pregTipo==='multiple'||pregTipo==='checkbox') {
-              const opts = (preg.opciones && preg.opciones.length>=2) ? preg.opciones : ['Opción 1','Opción 2'];
+              const opts = preg.opciones||['Opción 1','Opción 2'];
               const isCheck = pregTipo==='checkbox';
               return `<div class="scale-g">
                 <div class="scale-q">${pi+1}. ${pregTxt}</div>
                 <div style="display:flex;flex-direction:column;gap:.4rem;margin-top:.4rem;">
-                  ${opts.map((op,oi)=>`<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;padding:.3rem .5rem;border-radius:6px;transition:background .12s;" onmouseover="this.style.background='var(--purple-pale)'" onmouseout="this.style.background='transparent'">
-                    <input type="${isCheck?'checkbox':'radio'}" name="pub_${key}" value="${oi}" style="accent-color:var(--purple);" onchange="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=${isCheck?`(pubResp.dimResp?.['${key}']||[]).includes(${oi})?(pubResp.dimResp['${key}'].filter(x=>x!==${oi})):[...(pubResp.dimResp?.['${key}']||[]),${oi}]`:oi};"> ${op}</label>`).join('')}
+                  ${opts.map((op,oi)=>`<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;">
+                    <input type="${isCheck?'checkbox':'radio'}" name="pub_${key}" value="${oi}" onchange="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=${isCheck?`(pubResp.dimResp?.['${key}']||[]).includes(${oi})?(pubResp.dimResp['${key}'].filter(x=>x!==${oi})):[...(pubResp.dimResp?.['${key}']||[]),${oi}]`:oi};"> ${op}</label>`).join('')}
                 </div>
               </div>`;
             }
             if (pregTipo==='desplegable') {
-              const opts = (preg.opciones && preg.opciones.length>=1) ? preg.opciones : ['Opción 1'];
+              const opts = preg.opciones||['Opción 1'];
               return `<div class="scale-g">
                 <div class="scale-q">${pi+1}. ${pregTxt}</div>
                 <select class="fi" style="max-width:320px;" onchange="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=this.value;">
-                  <option value="">— Seleccionar —</option>
+                  <option value="">Seleccionar…</option>
                   ${opts.map((op,oi)=>`<option value="${oi}" ${resp.dimResp?.[key]==oi?'selected':''}>${op}</option>`).join('')}
                 </select>
               </div>`;
@@ -4660,17 +4934,17 @@ function renderEvalSec(areaId, step, resp, p) {
               </div>`;
             }
             if (pregTipo==='multiple'||pregTipo==='checkbox') {
-              const opts=(preg.opciones && preg.opciones.length>=2)?preg.opciones:['Opción 1','Opción 2']; const isCheck=pregTipo==='checkbox';
+              const opts=preg.opciones||['Opción 1','Opción 2']; const isCheck=pregTipo==='checkbox';
               return `<div class="scale-g"><div class="scale-q">${pi+1}. ${pregTxt}</div>
                 <div style="display:flex;flex-direction:column;gap:.4rem;margin-top:.4rem;">
-                  ${opts.map((op,oi)=>`<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;padding:.3rem .5rem;border-radius:6px;transition:background .12s;" onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background='transparent'"><input type="${isCheck?'checkbox':'radio'}" name="pub_${key}" value="${oi}" style="accent-color:var(--blue);" onchange="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=${isCheck?`(pubResp.compResp?.['${key}']||[]).includes(${oi})?(pubResp.compResp['${key}'].filter(x=>x!==${oi})):[...(pubResp.compResp?.['${key}']||[]),${oi}]`:oi};"> ${op}</label>`).join('')}
+                  ${opts.map((op,oi)=>`<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;"><input type="${isCheck?'checkbox':'radio'}" name="pub_${key}" value="${oi}" onchange="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=${isCheck?`(pubResp.compResp?.['${key}']||[]).includes(${oi})?(pubResp.compResp['${key}'].filter(x=>x!==${oi})):[...(pubResp.compResp?.['${key}']||[]),${oi}]`:oi};"> ${op}</label>`).join('')}
                 </div></div>`;
             }
             if (pregTipo==='desplegable') {
-              const opts=(preg.opciones && preg.opciones.length>=1)?preg.opciones:['Opción 1'];
+              const opts=preg.opciones||['Opción 1'];
               return `<div class="scale-g"><div class="scale-q">${pi+1}. ${pregTxt}</div>
                 <select class="fi" style="max-width:320px;" onchange="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=this.value;">
-                  <option value="">— Seleccionar —</option>
+                  <option value="">Seleccionar…</option>
                   ${opts.map((op,oi)=>`<option value="${oi}">${op}</option>`).join('')}
                 </select></div>`;
             }
