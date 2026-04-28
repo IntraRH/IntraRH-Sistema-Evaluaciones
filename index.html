@@ -884,12 +884,17 @@ async function onLoginSuccess(user) {
 function showLogin() {
   document.getElementById('login-overlay').classList.add('vis');
   document.getElementById('main-area').style.visibility = 'hidden';
-  document.getElementById('sidebar').style.visibility = 'hidden';
+  document.getElementById('sidebar').style.visibility   = 'hidden';
+  // Restaurar display por si venimos de una navegación
+  document.getElementById('main-area').style.display = '';
+  document.getElementById('sidebar').style.display   = '';
 }
 function hideLogin() {
   document.getElementById('login-overlay').classList.remove('vis');
   document.getElementById('main-area').style.visibility = '';
-  document.getElementById('sidebar').style.visibility = '';
+  document.getElementById('sidebar').style.visibility   = '';
+  document.getElementById('main-area').style.display = '';
+  document.getElementById('sidebar').style.display   = '';
 }
 function showLoginError(msg) {
   const el = document.getElementById('login-error');
@@ -3710,10 +3715,10 @@ function mostrarError(msg) {
 function activarModoParticipante() {
   const panel = document.getElementById('panel-participante');
   panel.style.cssText = 'display:block!important;position:fixed;inset:0;z-index:500;background:var(--bg);overflow-y:auto;visibility:visible!important;';
-  try { document.querySelector('.sidebar').style.display='none'; }catch(e){}
-  try { const m=document.querySelector('.main'); m.style.visibility='hidden'; m.style.pointerEvents='none'; }catch(e){}
+  try { document.getElementById('main-area').style.display = 'none'; }catch(e){}
+  try { document.getElementById('sidebar').style.display   = 'none'; }catch(e){}
   try { document.getElementById('login-overlay').classList.remove('vis'); }catch(e){}
-  try { document.getElementById('menu-toggle').style.display='none'; }catch(e){}
+  try { document.getElementById('menu-toggle').style.display = 'none'; }catch(e){}
   const p = pubProyecto;
   const escala = parseInt(p.escala)||5;
   const tipo   = p.tipo;
@@ -4162,7 +4167,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   const token   = params.get('token');
   const proyId  = params.get('proyectoId');
   if (token || proyId) {
+    // ── MODO PARTICIPANTE: ocultar UI admin INMEDIATAMENTE, sin flash ──
+    document.getElementById('main-area').style.display   = 'none';
+    document.getElementById('sidebar').style.display     = 'none';
+    try { document.getElementById('login-overlay').classList.remove('vis'); } catch(e){}
+    try { document.getElementById('menu-toggle').style.display = 'none'; } catch(e){}
+    // Spinner de carga mientras se obtienen datos de Supabase
+    const spinner = document.createElement('div');
+    spinner.id = 'pub-loading-spinner';
+    spinner.style.cssText = 'position:fixed;inset:0;z-index:600;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;';
+    spinner.innerHTML = `<div style="width:48px;height:48px;border:4px solid var(--purple-mid);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite;"></div><div style="font-weight:700;color:var(--purple);font-size:.95rem;">Cargando evaluación…</div>`;
+    document.body.appendChild(spinner);
     const detected = await detectarModoParticipante();
+    // Quitar spinner
+    try { spinner.remove(); } catch(e){}
     if (!detected) mostrarError('Parámetros de acceso inválidos.');
   } else {
     // Admin mode
