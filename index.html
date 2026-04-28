@@ -506,6 +506,17 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
         <div id="cfg-email-test" style="margin-top:.5rem;font-size:.78rem;"></div>
       </div>
     </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">🤖 Análisis con IA (Claude)</span></div>
+      <div class="card-body">
+        <div class="nota-blue">Ingresa tu API key de Anthropic para activar el análisis automático con IA en cada proyecto.</div>
+        <div class="fg">
+          <label class="fl">API Key de Anthropic</label>
+          <input class="fi" id="cfg-ia-key" type="password" placeholder="sk-ant-api03-…">
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem;">Obtén tu key en <a href="https://console.anthropic.com" target="_blank" style="color:var(--purple);">console.anthropic.com</a>. Se guarda localmente en tu navegador.</div>
+      </div>
+    </div>
   </div>
   <div class="g2" style="margin-top:1rem;">
     <div class="card">
@@ -831,13 +842,65 @@ function saveDB(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
 // DEFAULTS
 // ══════════════════════════════════════════
 const DEFAULT_DIMS = [
-  {titulo:'Liderazgo directo',desc:'Relación con el supervisor inmediato',preguntas:['Mi jefe comunica claramente las expectativas.','Mi jefe escucha mis ideas y preocupaciones.','Recibo retroalimentación constructiva y oportuna.','Mi jefe reconoce los logros del equipo.']},
-  {titulo:'Dirección organizacional',desc:'Confianza en la alta dirección',preguntas:['La alta dirección comunica claramente la visión.','Confío en las decisiones de la dirección.','La empresa actúa coherente con sus valores.']},
-  {titulo:'Comunicación interna',desc:'Claridad y flujo de información',preguntas:['Recibo información oportuna sobre cambios.','Me siento libre de expresar mis opiniones.','Los canales de comunicación son adecuados.']},
-  {titulo:'Relaciones interpersonales',desc:'Compañerismo y trabajo en equipo',preguntas:['Existe un ambiente de respeto y colaboración.','El trabajo en equipo es efectivo en mi área.','Se trata a todos con dignidad e igualdad.']},
-  {titulo:'Condiciones y recursos',desc:'Instalaciones, herramientas y entorno',preguntas:['Cuento con recursos necesarios para mi trabajo.','El espacio físico es adecuado y seguro.']},
-  {titulo:'Satisfacción y motivación',desc:'Bienestar personal y equilibrio laboral',preguntas:['Me siento motivado para dar lo mejor de mí.','Existe equilibrio razonable vida-trabajo.','Me siento orgulloso de trabajar aquí.']},
-  {titulo:'Desarrollo profesional',desc:'Capacitación, crecimiento y reconocimiento',preguntas:['Tengo oportunidades reales de desarrollo.','La empresa invierte en capacitación.','Mi desempeño es reconocido de forma justa.']}
+  {titulo:'Experiencia en la Organización',desc:'Datos del colaborador y percepción general',preguntas:[
+    {texto:'¿Cuál es su división o empresa?',tipo:'abierta'},
+    {texto:'Departamento al que pertenece',tipo:'abierta'},
+    {texto:'Antigüedad en la empresa',tipo:'escala'},
+    {texto:'¿Nos puede indicar el Objetivo General de su puesto?',tipo:'abierta'},
+    {texto:'¿Quién es su supervisor inmediato?',tipo:'abierta'},
+    {texto:'¿Desde que ingresó hasta ahora, cómo entiende que ha sido la evolución de la compañía?',tipo:'abierta'},
+    {texto:'¿Si debiera describir el ambiente de trabajo de la empresa con una palabra, ¿cuál sería?',tipo:'abierta'},
+    {texto:'¿Qué cosas de las que se hacen actualmente cambiaría y qué propone para cambiarlas?',tipo:'abierta'},
+  ]},
+  {titulo:'Cultura Organizacional',desc:'Misión, visión, valores y ambiente de trabajo',preguntas:[
+    {texto:'Conozco la misión, la visión y los valores de la empresa.',tipo:'escala'},
+    {texto:'Conozco el organigrama de la empresa.',tipo:'escala'},
+    {texto:'Los valores de la empresa son visibles en la conducta de todos los colaboradores.',tipo:'escala'},
+    {texto:'En la empresa los colaboradores pueden ser éticos y exitosos a la vez.',tipo:'escala'},
+    {texto:'En mi oficina o área laboral existe un ambiente relajado y productivo.',tipo:'escala'},
+    {texto:'Existe el trabajo en equipo en mi área de trabajo.',tipo:'escala'},
+    {texto:'Me siento feliz de trabajar en esta empresa.',tipo:'escala'},
+  ]},
+  {titulo:'Dirección y Gestión',desc:'Liderazgo de la gerencia general y participación',preguntas:[
+    {texto:'La Gerencia General responde ante las necesidades y preocupaciones de los colaboradores.',tipo:'escala'},
+    {texto:'Tengo libertad de expresar mis ideas y sugerencias.',tipo:'escala'},
+    {texto:'Puedo participar en la toma de decisiones que afectan mi trabajo.',tipo:'escala'},
+    {texto:'Continuamente la empresa busca maneras de mejorar sus productos y servicios.',tipo:'escala'},
+    {texto:'Existe trabajo en equipo entre los colaboradores y departamentos de la empresa.',tipo:'escala'},
+    {texto:'El ambiente de trabajo me motiva a desempeñarme al máximo.',tipo:'escala'},
+    {texto:'Hay buenas oportunidades de aprender nuevas habilidades en esta organización.',tipo:'escala'},
+    {texto:'Tengo claras las funciones que debo realizar.',tipo:'escala'},
+  ]},
+  {titulo:'Liderazgo',desc:'Relación con el supervisor inmediato',preguntas:[
+    {texto:'Mi supervisor trata a todos los colaboradores de manera justa y uniforme.',tipo:'escala'},
+    {texto:'Mi líder se preocupa por mantener un buen clima en el equipo.',tipo:'escala'},
+    {texto:'Mantengo buena relación con mi supervisor inmediato.',tipo:'escala'},
+    {texto:'El trabajo que hago es reconocido por mi supervisor inmediato.',tipo:'escala'},
+    {texto:'Considero que recibo un trato justo y respetuoso de parte de mis superiores.',tipo:'escala'},
+    {texto:'Mi líder escucha mis opiniones y me hace partícipe de las decisiones.',tipo:'escala'},
+  ]},
+  {titulo:'Compensación y Beneficios',desc:'Salario, beneficios e integración',preguntas:[
+    {texto:'El salario que recibo es adecuado para el trabajo que realizo.',tipo:'escala'},
+    {texto:'Estoy conforme con los beneficios marginales que me ofrece la empresa.',tipo:'escala'},
+    {texto:'La empresa realiza actividades que motiven la integración de todos.',tipo:'escala'},
+    {texto:'La empresa se preocupa por mi bienestar físico y emocional.',tipo:'escala'},
+    {texto:'Existe flexibilidad con los horarios, permisos y vacaciones.',tipo:'escala'},
+    {texto:'¿Qué beneficios adicionales o actividades para tu bienestar propones que la empresa integre?',tipo:'abierta'},
+  ]},
+  {titulo:'Bienestar',desc:'Percepción de bienestar integral en el trabajo',preguntas:[
+    {texto:'¿En qué medida siente que la empresa se preocupa por su bienestar?',tipo:'escala'},
+    {texto:'¿Qué aspectos considera más importantes para su bienestar dentro de la empresa?',tipo:'abierta'},
+    {texto:'¿Qué siente que actualmente le falta o podría mejorar para su bienestar en el trabajo?',tipo:'abierta'},
+    {texto:'Si la empresa pudiera implementar una sola mejora en bienestar, ¿cuál tendría mayor impacto para usted?',tipo:'abierta'},
+    {texto:'¿Qué podría hacer la empresa para mejorar su bienestar?',tipo:'abierta'},
+  ]},
+  {titulo:'Ambiente Físico',desc:'Condiciones e infraestructura del lugar de trabajo',preguntas:[
+    {texto:'Mi lugar de trabajo es cómodo.',tipo:'escala'},
+    {texto:'La iluminación en mi lugar de trabajo es adecuada.',tipo:'escala'},
+    {texto:'Cuento con el espacio adecuado para realizar mi trabajo.',tipo:'escala'},
+    {texto:'Cuento con todas las herramientas necesarias para hacer bien mi trabajo.',tipo:'escala'},
+    {texto:'Compártenos algún comentario adicional:',tipo:'abierta'},
+  ]},
 ];
 const DEFAULT_COMPS = [
   {titulo:'Cumplimiento y calidad',desc:'Exactitud, responsabilidad y entrega',preguntas:['Entrega tareas con calidad y dentro del plazo.','Demuestra atención al detalle y rigor.','Asume responsabilidad por sus resultados.']},
@@ -890,13 +953,18 @@ async function loadAllData() {
       _supa.from('irh_proj_users').select('*'),
       _supa.from('irh_participantes').select('*')
     ]);
-    if (prRes.data?.length)    { PROYECTOS    = prRes.data.map(r=>({...r.data_json,_supaid:r.id}));   saveDB('irh_proyectos',PROYECTOS); }
-    if (respRes.data?.length)  { RESPUESTAS   = respRes.data.map(r=>({...r.data_json,_supaid:r.id})); saveDB('irh_respuestas',RESPUESTAS); }
-    if (colRes.data?.length)   { COLABORADORES= colRes.data;                                           saveDB('irh_colaboradores',COLABORADORES); }
-    if (linksRes.data?.length && linksRes.data[0].links_json) { LINKS = linksRes.data[0].links_json;  saveDB('irh_links',LINKS); }
-    if (cfgRes.data?.length && cfgRes.data[0].config_json)    { CFG   = {...CFG,...cfgRes.data[0].config_json}; saveDB('irh_cfg',CFG); }
-    if (puRes.data?.length)    { PROJ_USERS   = puRes.data.map(r=>({...r.data_json,_supaid:r.id}));   saveDB('irh_proj_users',PROJ_USERS); }
-    if (partRes.data?.length)  { PARTICIPANTES= partRes.data.map(r=>({...r.data_json,_supaid:r.id})); saveDB('irh_participantes',PARTICIPANTES); }
+    // Helper: merge data_json with _supaid (strip any nested _supaid inside the json)
+    const merge = (rows) => rows.map(r => {
+      const { _supaid: _, ...clean } = (r.data_json || {});
+      return { ...clean, _supaid: r.id };
+    });
+    if (prRes.data?.length)   { PROYECTOS    = merge(prRes.data);   saveDB('irh_proyectos',PROYECTOS); }
+    if (respRes.data?.length) { RESPUESTAS   = merge(respRes.data); saveDB('irh_respuestas',RESPUESTAS); }
+    if (colRes.data?.length)  { COLABORADORES= colRes.data;         saveDB('irh_colaboradores',COLABORADORES); }
+    if (linksRes.data?.length && linksRes.data[0].links_json) { LINKS = linksRes.data[0].links_json; saveDB('irh_links',LINKS); }
+    if (cfgRes.data?.length && cfgRes.data[0].config_json)    { CFG  = {...CFG,...cfgRes.data[0].config_json}; saveDB('irh_cfg',CFG); }
+    if (puRes.data?.length)   { PROJ_USERS   = merge(puRes.data);   saveDB('irh_proj_users',PROJ_USERS); }
+    if (partRes.data?.length) { PARTICIPANTES= merge(partRes.data); saveDB('irh_participantes',PARTICIPANTES); }
   } catch(err) {
     console.warn('loadAllData:', err.message);
     setSyncStatus('error','Error: '+err.message);
@@ -907,13 +975,24 @@ async function saveToSupa(table, entry) {
   if (!_supa || !currentUser) return;
   try {
     if (entry._supaid) {
-      await _supa.from(table).update({data_json: entry}).eq('id', entry._supaid);
+      // UPDATE — strip _supaid from the stored JSON so it doesn't nest
+      const { _supaid, ...dataJson } = entry;
+      await _supa.from(table).update({ data_json: dataJson }).eq('id', _supaid);
     } else {
-      const { data } = await _supa.from(table).insert({data_json: entry}).select().single();
-      if (data) entry._supaid = data.id;
+      // INSERT — store without _supaid in the JSON
+      const { _supaid: _, ...dataJson } = entry;
+      const { data, error } = await _supa.from(table).insert({ data_json: dataJson }).select().single();
+      if (error) throw error;
+      if (data) {
+        // Propagate the new Supabase row id back to the in-memory entry
+        entry._supaid = data.id;
+      }
     }
-    setSyncStatus('ok','Guardado · '+new Date().toLocaleTimeString('es-DO'));
-  } catch(err) { setSyncStatus('error','Error: '+err.message); }
+    setSyncStatus('ok', 'Guardado · ' + new Date().toLocaleTimeString('es-DO'));
+  } catch(err) {
+    console.error('saveToSupa:', err);
+    setSyncStatus('error', 'Error: ' + err.message);
+  }
 }
 
 async function deleteFromSupa(table, supaid) {
@@ -935,10 +1014,12 @@ async function saveParticipante(entry) {
   if (!_supa) return;
   try {
     const table = 'irh_participantes';
-    if (entry._supaid) {
-      await _supa.from(table).update({data_json: entry}).eq('id', entry._supaid);
+    const { _supaid, ...dataJson } = entry;
+    if (_supaid) {
+      await _supa.from(table).update({ data_json: dataJson }).eq('id', _supaid);
     } else {
-      const { data } = await _supa.from(table).insert({data_json: entry}).select().single();
+      const { data, error } = await _supa.from(table).insert({ data_json: dataJson }).select().single();
+      if (error) throw error;
       if (data) entry._supaid = data.id;
     }
   } catch(e) { console.warn('saveParticipante:', e.message); }
@@ -948,10 +1029,12 @@ async function saveRespuestaToSupa(entry) {
   if (!_supa) return;
   try {
     const table = 'irh_respuestas';
-    if (entry._supaid) {
-      await _supa.from(table).update({data_json: entry}).eq('id', entry._supaid);
+    const { _supaid, ...dataJson } = entry;
+    if (_supaid) {
+      await _supa.from(table).update({ data_json: dataJson }).eq('id', _supaid);
     } else {
-      const { data } = await _supa.from(table).insert({data_json: entry}).select().single();
+      const { data, error } = await _supa.from(table).insert({ data_json: dataJson }).select().single();
+      if (error) throw error;
       if (data) entry._supaid = data.id;
     }
   } catch(e) { console.warn('saveResp:', e.message); }
@@ -1270,7 +1353,10 @@ async function guardarProyecto() {
   const idx = PROYECTOS.findIndex(x=>x.id===id);
   if (idx>=0) PROYECTOS[idx] = {...PROYECTOS[idx],...entry}; else PROYECTOS.push(entry);
   saveDB('irh_proyectos',PROYECTOS);
-  await saveToSupa('irh_proyectos', PROYECTOS.find(x=>x.id===id));
+  // saveToSupa mutates entry._supaid on INSERT — use the reference from the array
+  const arrRef = PROYECTOS.find(x=>x.id===id);
+  await saveToSupa('irh_proyectos', arrRef);
+  saveDB('irh_proyectos',PROYECTOS); // persist _supaid after insert
   closeModal('m-proyecto');
   renderProyectos();
   showToast('✅ Proyecto guardado','success');
@@ -2406,6 +2492,15 @@ async function generarIA(tipo) {
   const p = PROYECTOS.find(x=>x.id===currentProjectId); if (!p) return;
   const resp = RESPUESTAS.filter(r=>r.proyectoId===currentProjectId);
   if (!resp.length) { showToast('No hay respuestas para analizar','error'); return; }
+  if (!CFG.ia_key) {
+    showToast('Configura tu API key de IA en Configuración','error');
+    const resEl = document.getElementById('ia-result');
+    if (resEl) {
+      resEl.textContent = '⚠️ No hay API key configurada.\n\nVe a Configuración → IA (Claude) → ingresa tu API key de Anthropic y guarda.\n\nObtén una en: console.anthropic.com';
+      resEl.style.display = 'block';
+    }
+    return;
+  }
   const loadEl = document.getElementById('ia-loading');
   const resEl  = document.getElementById('ia-result');
   const actEl  = document.getElementById('ia-actions');
@@ -2439,13 +2534,35 @@ async function generarIA(tipo) {
     prompt=`${base}Distribución: ${clasifs}\n\nGenera un ${tipos[tipo]} en español para esta evaluación de desempeño. Sé específico, profesional y orientado a acción.`;
   }
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:prompt}]})});
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CFG.ia_key || '',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-allow-browser': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        messages: [{role:'user', content: prompt}]
+      })
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(()=>({}));
+      if (response.status === 401) throw new Error('API key inválida o no configurada. Agrégala en Configuración → IA.');
+      if (response.status === 403) throw new Error('Sin permisos. Verifica tu API key de Anthropic.');
+      throw new Error(err.error?.message || 'Error HTTP ' + response.status);
+    }
     const result = await response.json();
-    const text = result.content?.[0]?.text||'No se pudo generar.';
-    if (resEl) { resEl.textContent=text; resEl.style.display='block'; }
-    if (actEl) { actEl.style.display='flex'; }
-  } catch(err) { showToast('Error IA: '+err.message,'error'); }
-  finally { if (loadEl) loadEl.style.display='none'; }
+    const text = result.content?.[0]?.text || 'No se pudo generar.';
+    if (resEl) { resEl.textContent = text; resEl.style.display = 'block'; }
+    if (actEl) { actEl.style.display = 'flex'; }
+  } catch(err) {
+    if (resEl) { resEl.textContent = '❌ ' + err.message; resEl.style.display = 'block'; }
+    showToast('Error IA: ' + err.message, 'error');
+  }
+  finally { if (loadEl) loadEl.style.display = 'none'; }
 }
 
 function exportIAText() {
@@ -2920,6 +3037,8 @@ function renderConfigPanel() {
   document.getElementById('cfg-firma').value    = CFG.firma||'IntraRHecursos';
   document.getElementById('cfg-escala').value   = CFG.escala||5;
   document.getElementById('cfg-anonimato').value= CFG.anonimato||'opcional';
+  const iaEl = document.getElementById('cfg-ia-key');
+  if (iaEl) iaEl.value = CFG.ia_key||'';
   const emailCfg = CFG.email||{};
   const emailEl  = document.getElementById('cfg-email-config');
   if (emailEl) emailEl.innerHTML = `
@@ -2932,6 +3051,7 @@ async function guardarConfig() {
   CFG.firma    = document.getElementById('cfg-firma').value;
   CFG.escala   = parseInt(document.getElementById('cfg-escala').value)||5;
   CFG.anonimato= document.getElementById('cfg-anonimato').value;
+  CFG.ia_key   = document.getElementById('cfg-ia-key')?.value||'';
   CFG.email    = {
     srv:  document.getElementById('cfg-email-srv')?.value||'',
     key:  document.getElementById('cfg-email-key')?.value||'',
@@ -2969,7 +3089,10 @@ async function detectarModoParticipante() {
 
   try {
     const proyRes = await _supa.from('irh_proyectos').select('*');
-    if (proyRes.data?.length) PROYECTOS = proyRes.data.map(r=>({...r.data_json,_supaid:r.id}));
+    if (proyRes.data?.length) PROYECTOS = proyRes.data.map(r => {
+      const { _supaid: _, ...clean } = (r.data_json || {});
+      return { ...clean, _supaid: r.id };
+    });
   } catch(e) { console.warn('proyectos load error:', e.message); }
 
   try {
@@ -2979,7 +3102,10 @@ async function detectarModoParticipante() {
 
   try {
     const partRes = await _supa.from('irh_participantes').select('*');
-    if (partRes.data?.length) PARTICIPANTES = partRes.data.map(r=>({...r.data_json,_supaid:r.id}));
+    if (partRes.data?.length) PARTICIPANTES = partRes.data.map(r => {
+      const { _supaid: _, ...clean } = (r.data_json || {});
+      return { ...clean, _supaid: r.id };
+    });
   } catch(e) { console.warn('participantes load error:', e.message); }
 
   // Token individual de participante
