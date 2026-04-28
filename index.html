@@ -3366,41 +3366,190 @@ function exportIndividualPDF(r, p, escala, score, clasif) {
   }catch(e){showToast('Error PDF: '+e.message,'error');}
 }
 
-function exportIndividualWord(r, p, escala, score, clasif) {
-  const items=p?.tipo==='clima'?(p.dimensiones||DEFAULT_DIMS):(p.competencias||DEFAULT_COMPS);
-  const rows=items.map((d,di)=>{
+async function exportIndividualWord(r, p, escala, score, clasif) {
+  showToast('⏳ Generando ficha individual…');
+  const isClima = p?.tipo==='clima';
+  const items = isClima?(p.dimensiones||DEFAULT_DIMS):(p.competencias||DEFAULT_COMPS);
+  const nombre = r.nombre||r.ev_nombre||'—';
+  const cargo  = r.cargo||r.ev_cargo||'—';
+  const dept   = r.dept||r.ev_dept||'—';
+
+  // Calcular scores por sección
+  const scoreObjetivos   = r.score_objetivos   || Math.round(score * 0.5);
+  const scoreCompetencias= r.score_comp        || Math.round(score * 0.25);
+  const scoreValores     = r.score_valores     || Math.round(score * 0.25);
+  const finalClrBg = score>=90?'#D4EDDA':score>=75?'#FFF9C4':score>=55?'#E3F2FD':'#FFEBEE';
+  const finalClr   = score>=90?'#2E7D32':score>=75?'#7B6200':score>=55?'#0D47A1':'#B71C1C';
+
+  try {
+    // Intentar Edge Function para .docx real
+    const fnUrl = `${SUPA_URL}/functions/v1/word-ficha`;
+    const payload = {
+      r: {
+        id:r.id, fecha:r.fecha||today(),
+        ev_nombre:r.ev_nombre||r.nombre||'', ev_cargo:r.ev_cargo||r.cargo||'',
+        ev_dept:r.ev_dept||r.dept||'', empresa: p.empresa||'',
+        eval_nombre:r.eval_nombre||'', eval_cargo:r.eval_cargo||r.eval_tipo||'',
+        eval_dept:r.eval_dept||'Gerencial', eval_tipo:r.eval_tipo||'—',
+        score, score_objetivos:scoreObjetivos, score_comp:scoreCompetencias, score_valores:scoreValores,
+        clasif, compResp:r.compResp||{}, dimResp:r.dimResp||{},
+        objetivos:r.objetivos||[], valores:r.valores||[]
+      },
+      p: {empresa:p.empresa||'',nombre:p.nombre||'',tipo:p.tipo,periodo:p.periodo||'',escala},
+      items: items.map(d=>({titulo:d.titulo,desc:d.desc||'',preguntas:d.preguntas.map(q=>typeof q==='object'?q.texto:(q||''))})),
+      isClima, escala
+    };
+    const res = await fetch(fnUrl, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPA_KEY}`,'apikey':SUPA_KEY},
+      body: JSON.stringify(payload)
+    });
+    if (res.ok && res.headers.get('content-type')?.includes('octet-stream')) {
+      const buf = await res.arrayBuffer();
+      const blob = new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+      a.download='IntraRH_'+nombre.replace(/\s+/g,'_')+'_'+today()+'.docx'; a.click();
+      showToast('✅ Ficha individual (.docx) generada','success');
+      return;
+    }
+    throw new Error('Edge Function no disponible');
+  } catch(e) {
+    // Fallback HTML enriquecido (estilo Hoyo Claro / Vihemy)
+    _exportFichaHTMLFallback(r, p, items, isClima, escala, score, clasif, nombre, cargo, dept,
+      scoreObjetivos, scoreCompetencias, scoreValores, finalClrBg, finalClr);
+  }
+}
+
+function _exportFichaHTMLFallback(r, p, items, isClima, escala, score, clasif, nombre, cargo, dept,
+  scoreObj, scoreComp, scoreVal, finalBg, finalClr) {
+  const empresa = p?.empresa||'';
+  const periodo = p?.periodo||'';
+  const fecha   = r.fecha||today();
+  const evalNombre = r.eval_nombre||'—';
+  const evalCargo  = r.eval_cargo||r.eval_tipo||'—';
+  const evalTipo   = r.eval_tipo||'—';
+
+  const dimStats = items.map((d,di)=>{
     const vals=[];
-    if(p?.tipo==='clima') d.preguntas.forEach((_,pi)=>{const v=r.dimResp?.['dim_'+di+'_'+pi];if(typeof v==='number')vals.push(v);});
-    else d.preguntas.forEach((_,pi)=>{const v=r.compResp?.['comp_'+di+'_'+pi];if(typeof v==='number')vals.push(v);});
-    const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):0;
-    const pct=Math.round((avg/escala)*100);
-    const clr=pct>=80?'#27AE60':pct>=60?'#1AA7D8':pct>=40?'#F39C12':'#E74C3C';
-    return `<tr><td>${d.titulo}</td><td style="text-align:center;font-weight:bold;color:${clr};">${avg}/${escala}</td><td style="text-align:center;font-weight:bold;color:${clr};">${pct}%</td></tr>`;
-  }).join('');
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial;font-size:11pt;margin:2cm;}
-  .cover{background:#1264A3;color:#fff;padding:30pt;margin:-2cm -2cm 20pt;}
-  .cover h1{font-size:20pt;font-weight:900;margin-bottom:6pt;}
-  .cover p{font-size:10pt;opacity:.85;}
-  .score{background:#F5F8FC;border-radius:5pt;padding:10pt 16pt;border-top:3pt solid #1264A3;margin:14pt 0;display:inline-block;}
-  h2{color:#1264A3;font-size:13pt;margin-top:18pt;}
-  table{border-collapse:collapse;width:100%;margin:8pt 0;}
-  th{background:#1264A3;color:#fff;padding:6pt 10pt;font-size:9pt;text-align:left;}
-  td{padding:6pt 10pt;border-bottom:1pt solid #E4E8EF;font-size:9pt;}
-  </style></head><body>
-  <div class="cover">
-    <h1>${p?.tipo==='clima'?'Clima Organizacional':'Evaluación de Desempeño'}</h1>
-    <p>${p?.empresa} · ${p?.periodo||today()}</p>
-  </div>
-  <h2>Colaborador</h2>
-  <p><b>${r.nombre||r.ev_nombre||'—'}</b> | Fecha: ${fmtDate(r.fecha)}</p>
-  <div class="score"><b style="font-size:22pt;color:#1264A3;">${score}%</b> <span style="font-size:12pt;color:#7882A0;">${clasif}</span></div>
-  <h2>${p?.tipo==='clima'?'Dimensiones':'Competencias'}</h2>
-  <table><thead><tr><th>Ítem</th><th>Promedio</th><th>%</th></tr></thead><tbody>${rows}</tbody></table>
-  </body></html>`;
+    d.preguntas.forEach((_,pi)=>{
+      const v=isClima?r.dimResp?.['dim_'+di+'_'+pi]:r.compResp?.['comp_'+di+'_'+pi];
+      if(typeof v==='number') vals.push(v);
+    });
+    const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length):0;
+    return {titulo:d.titulo, avg: avg.toFixed(1), pct:Math.round((avg/escala)*100)};
+  });
+
+  const objRows = (r.objetivos||[]).length > 0
+    ? (r.objetivos||[]).map((o,i)=>`<tr><td style="padding:6pt 10pt;border-bottom:1pt solid #E0E0E0;font-size:9pt;">${i+1}. ${o.titulo||''}</td><td style="padding:6pt 10pt;border-bottom:1pt solid #E0E0E0;font-size:9pt;color:#888;text-align:center;">texto</td><td style="padding:6pt 10pt;border-bottom:1pt solid #E0E0E0;font-size:9pt;">Resultado obtenido de ${o.pct||0}%</td></tr>`).join('')
+    : `<tr><td style="padding:6pt 10pt;border-bottom:1pt solid #E0E0E0;"></td><td style="padding:6pt 10pt;border-bottom:1pt solid #E0E0E0;color:#888;text-align:center;">Texto</td><td style="padding:6pt 10pt;border-bottom:1pt solid #E0E0E0;">Logro de objetivos ponderado ${scoreObj}%.</td></tr>`;
+
+  const compRows = dimStats.map((d,i)=>`<tr><td style="padding:6pt 10pt;border-bottom:1pt solid #E0E0E0;font-size:9pt;">${i+1}. ${d.titulo}</td><td style="padding:6pt 10pt;border-bottom:1pt solid #E0E0E0;font-size:9pt;color:#888;text-align:center;">escala</td><td style="padding:6pt 10pt;border-bottom:1pt solid #E0E0E0;font-size:9pt;font-weight:bold;text-align:center;">${d.avg>0?Math.round(parseFloat(d.avg)):'—'}</td></tr>`).join('');
+
+  const valRows = (r.valores||[]).map((v,i)=>`<tr><td style="padding:6pt 10pt;border-bottom:1pt solid #E0E0E0;font-size:9pt;">${i+1}. ${v.titulo||''}</td><td style="padding:6pt 10pt;border-bottom:1pt solid #E0E0E0;font-size:9pt;color:#888;text-align:center;">escala</td><td style="padding:6pt 10pt;border-bottom:1pt solid #E0E0E0;font-size:9pt;font-weight:bold;text-align:center;">${v.resultado||'—'}</td></tr>`).join('');
+
+  const tRow = (k,v) => `<tr><td style="padding:5pt 10pt;font-size:9pt;font-weight:bold;color:#333;">${k}</td><td style="padding:5pt 10pt;font-size:9pt;color:#333;">${v}</td></tr>`;
+  const secHead = (t) => `<p style="font-weight:bold;font-size:11pt;margin:16pt 0 0;border-bottom:1pt solid #CCCCCC;padding-bottom:4pt;">${t}</p>`;
+
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+@page{size:A4;margin:2cm 2.2cm;}
+body{font-family:Arial,sans-serif;color:#2D2D2D;font-size:10pt;}
+.empresa{font-size:18pt;color:#555;margin-bottom:12pt;}
+.titulo{text-align:center;font-size:16pt;color:#555;text-transform:uppercase;font-weight:normal;letter-spacing:1pt;margin-bottom:4pt;}
+.subtitulo{text-align:center;font-size:8pt;color:#888;margin-bottom:20pt;}
+.res-table{border-collapse:collapse;width:100%;margin-bottom:16pt;}
+.res-table td{border:1pt solid #CCCCCC;padding:8pt 10pt;text-align:center;}
+.res-table .header td{color:#888;font-size:9pt;font-weight:normal;}
+.res-table .scores td{font-size:16pt;font-weight:bold;}
+.datos-table{border-collapse:collapse;width:100%;margin-bottom:16pt;}
+.datos-table td{border:1pt solid #CCCCCC;padding:6pt 10pt;font-size:9pt;background:#F9F9F9;vertical-align:top;}
+.sec-table{border-collapse:collapse;width:100%;margin-bottom:0;}
+.sec-table th{font-weight:bold;font-size:9pt;color:#666;border-bottom:1.5pt solid #999;padding:5pt 10pt;text-align:left;}
+.sec-table td{padding:5pt 10pt;border-bottom:1pt solid #E0E0E0;font-size:9pt;}
+.footer{font-size:7pt;color:#999;border-top:1pt solid #CCCCCC;padding-top:4pt;margin-top:20pt;display:flex;justify-content:space-between;}
+.firmas{display:flex;gap:40pt;margin-top:48pt;}
+.firma-line{flex:1;border-top:1.5pt solid #333;padding-top:6pt;text-align:center;font-size:9pt;font-weight:bold;}
+.firma-name{font-weight:normal;color:#666;font-size:8pt;}
+</style></head><body>
+
+<div class="empresa">${empresa}</div>
+<div class="titulo">EVALUACIÓN DE DESEMPEÑO</div>
+<div class="subtitulo">${isClima?'Evaluación de Clima Organizacional':'Evaluación de Desempeño'} - ${cargo} | ${empresa} | ${periodo} | ${fecha}</div>
+
+<p style="font-weight:bold;font-size:10pt;margin-bottom:6pt;">RESULTADO DE LA EVALUACIÓN</p>
+<hr style="border:0;border-top:1pt solid #CCCCCC;margin-bottom:10pt;">
+<table class="res-table">
+  <tr class="header"><td>Logro de Objetivos (50%)</td><td>Competencias (25%)</td><td>Valores (25%)</td><td>Calificación Final</td></tr>
+  <tr class="scores"><td>${scoreObj}%</td><td>${scoreComp}%</td><td>${scoreVal}%</td><td style="background:${finalBg};color:${finalClr};">${score}%</td></tr>
+</table>
+
+<table class="datos-table">
+  <tr>
+    <td style="width:50%;vertical-align:top;">
+      <div style="font-weight:bold;font-size:8pt;color:#888;text-transform:uppercase;margin-bottom:6pt;">EVALUADO</div>
+      <table style="border-collapse:collapse;width:100%;">
+        ${tRow('Nombre',nombre)}${tRow('Puesto',cargo)}${tRow('Departamento',dept)}${tRow('Empresa',empresa)}
+      </table>
+    </td>
+    <td style="width:50%;vertical-align:top;">
+      <div style="font-weight:bold;font-size:8pt;color:#888;text-transform:uppercase;margin-bottom:6pt;">EVALUADOR</div>
+      <table style="border-collapse:collapse;width:100%;">
+        ${tRow('Nombre',evalNombre)}${tRow('Puesto',evalCargo)}${tRow('Departamento','Gerencial')}${tRow('Tipo evaluador',evalTipo)}
+      </table>
+    </td>
+  </tr>
+</table>
+
+${secHead('Datos de la evaluación')}
+<table style="border-collapse:collapse;width:100%;margin-bottom:16pt;">
+  <tr><td style="padding:5pt 10pt;font-weight:bold;font-size:9pt;border-bottom:1pt solid #E0E0E0;">Plantilla</td><td style="padding:5pt 10pt;font-size:9pt;border-bottom:1pt solid #E0E0E0;">Evaluación de Desempeño - ${dept}</td></tr>
+  <tr><td style="padding:5pt 10pt;font-weight:bold;font-size:9pt;border-bottom:1pt solid #E0E0E0;">Estado</td><td style="padding:5pt 10pt;font-size:9pt;border-bottom:1pt solid #E0E0E0;">Completada</td></tr>
+  <tr><td style="padding:5pt 10pt;font-weight:bold;font-size:9pt;">Período</td><td style="padding:5pt 10pt;font-size:9pt;">${periodo}</td></tr>
+</table>
+
+${secHead('CUMPLIMIENTO DE OBJETIVOS (50%)')}
+<table class="sec-table" style="margin-bottom:16pt;">
+  <thead><tr><th>Pregunta / Campo</th><th style="text-align:center;">Tipo</th><th>Resultado</th></tr></thead>
+  <tbody>${objRows}</tbody>
+</table>
+
+${dimStats.length>0?`${secHead('COMPETENCIAS (25%)')}
+<p style="font-size:8pt;color:#888;margin:4pt 0 8pt;">Escala de Evaluación: 1 = Bajo | 2 = Aceptable | 3 = Bueno | 4 = Muy Bueno | 5 = Excelente</p>
+<table class="sec-table" style="margin-bottom:16pt;">
+  <thead><tr><th>Pregunta / Campo</th><th style="text-align:center;">Tipo</th><th style="text-align:center;">Resultado</th></tr></thead>
+  <tbody>${compRows}</tbody>
+</table>`:''}
+
+${(r.valores||[]).length>0?`${secHead('VALORES CORPORATIVOS (25%)')}
+<p style="font-size:8pt;color:#888;margin:4pt 0 8pt;">Escala de Evaluación: 1 = Nunca lo demuestra | 2 = Raramente | 3 = A veces | 4 = Frecuentemente | 5 = Siempre</p>
+<table class="sec-table" style="margin-bottom:16pt;">
+  <thead><tr><th>Pregunta / Campo</th><th style="text-align:center;">Tipo</th><th style="text-align:center;">Resultado</th></tr></thead>
+  <tbody>${valRows}</tbody>
+</table>`:''}
+
+${secHead('CONFORMIDAD DEL EVALUADO')}
+<p style="font-size:9pt;margin:8pt 0;">Indique si está de acuerdo con los resultados de su evaluación:</p>
+<table style="border-collapse:collapse;width:50%;">
+  <tr>
+    <td style="border:1pt solid #CCCCCC;padding:8pt 12pt;font-size:9pt;">☐  Estoy de acuerdo con los resultados</td>
+    <td style="border:1pt solid #CCCCCC;padding:8pt 12pt;font-size:9pt;">☐  No estoy de acuerdo con los resultados</td>
+  </tr>
+</table>
+
+<div class="firmas">
+  <div class="firma-line">Firma del Evaluado<br><span class="firma-name">${nombre}</span></div>
+  <div class="firma-line">Firma del Evaluador<br><span class="firma-name">${evalNombre}</span></div>
+</div>
+
+<div class="footer">
+  <span>IntraRHecursos</span><span>${fecha}</span>
+</div>
+</body></html>`;
+
   const blob=new Blob([html],{type:'application/msword;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='IntraRH_Ind_'+(r.nombre||r.ev_nombre||'col').replace(/\s+/g,'_')+'_'+today()+'.doc'; a.click();
-  showToast('✅ Word individual generado','success');
+  a.download='IntraRH_'+nombre.replace(/\s+/g,'_')+'_'+today()+'.doc'; a.click();
+  showToast('✅ Ficha individual generada','success');
 }
 
 // ══════════════════════════════════════════
