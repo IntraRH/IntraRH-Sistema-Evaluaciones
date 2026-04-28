@@ -553,40 +553,6 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
         <div id="cfg-email-test" style="margin-top:.5rem;font-size:.78rem;"></div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-header"><span class="card-title">🤖 Análisis con IA</span></div>
-      <div class="card-body">
-        <div class="nota-blue">El análisis con IA corre a través de tu Supabase Edge Function — las API keys nunca se exponen en el navegador.</div>
-        <div class="fg">
-          <label class="fl">Proveedor de IA</label>
-          <select class="fi" id="cfg-ia-provider" onchange="toggleIAProvider()">
-            <option value="claude">🟣 Claude (Anthropic)</option>
-            <option value="openai">🟢 ChatGPT (OpenAI)</option>
-          </select>
-        </div>
-        <div id="cfg-ia-claude-info" class="nota-blue" style="line-height:1.7;">
-          <strong>Para activar Claude:</strong><br>
-          1. Supabase → <strong>Edge Functions → New Function</strong> → nombre: <code style="background:rgba(0,0,0,.07);padding:1px 5px;border-radius:3px;">ai-proxy</code><br>
-          2. <strong>Manage Secrets</strong> → agrega <code style="background:rgba(0,0,0,.07);padding:1px 5px;border-radius:3px;">ANTHROPIC_API_KEY</code><br>
-          3. Pega el código de la función (ver instrucciones)
-        </div>
-        <div id="cfg-ia-openai-info" class="nota-blue" style="display:none;line-height:1.7;">
-          <strong>Para activar ChatGPT:</strong><br>
-          1. Supabase → <strong>Edge Functions → New Function</strong> → nombre: <code style="background:rgba(0,0,0,.07);padding:1px 5px;border-radius:3px;">ai-proxy</code><br>
-          2. <strong>Manage Secrets</strong> → agrega <code style="background:rgba(0,0,0,.07);padding:1px 5px;border-radius:3px;">OPENAI_API_KEY</code><br>
-          3. Pega el código de la función (ver instrucciones)
-        </div>
-        <div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap;">
-          <button class="btn btn-ghost btn-sm" onclick="probarIA()">🧪 Probar conexión IA</button>
-          <button class="btn btn-ghost btn-sm" onclick="mostrarCodigoEdgeFunction()">📋 Ver código Edge Function</button>
-        </div>
-        <div id="cfg-ia-test" style="margin-top:.5rem;font-size:.78rem;"></div>
-        <div id="cfg-ia-code" style="display:none;margin-top:.8rem;">
-          <pre id="cfg-ia-code-pre" style="background:var(--bg);padding:.8rem;border-radius:var(--rs);overflow:auto;font-size:.65rem;max-height:260px;border:1px solid var(--border);"></pre>
-          <button class="btn btn-ghost btn-sm" style="margin-top:.4rem;" onclick="copiarCodigoEdgeFunction()">📋 Copiar código</button>
-        </div>
-      </div>
-    </div>
   </div>
   <div class="g2" style="margin-top:1rem;">
     <div class="card">
@@ -656,7 +622,7 @@ CREATE POLICY "anon insert" ON irh_participantes FOR INSERT TO anon WITH CHECK (
     <!-- Form -->
     <div id="pub-form-card" style="display:none;">
       <div style="background:var(--white);border-radius:var(--r) var(--r) 0 0;border:1px solid var(--border);border-bottom:none;">
-        <div style="background:linear-gradient(135deg,var(--purple) 0%,var(--purple-l) 100%);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+        <div style="background:linear-gradient(135deg,${p.color1||'var(--purple)'} 0%,${p.color2||'var(--purple-l)'} 100%);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
           <div style="display:flex;align-items:center;gap:10px;">
             <div id="pub-logo-wrap" style="display:none;"><img id="pub-logo-img" src="" alt="" style="height:32px;max-width:100px;object-fit:contain;border-radius:4px;background:#fff;padding:2px 6px;"></div>
             <div>
@@ -723,9 +689,32 @@ CREATE POLICY "anon insert" ON irh_participantes FOR INSERT TO anon WITH CHECK (
       <div class="fg"><label class="fl">Período</label><input class="fi" id="m-proy-periodo" placeholder="Ej: Q2 2025"></div>
     </div>
     <div class="fr">
-      <div class="fg"><label class="fl">Logo empresa (URL)</label><input class="fi" id="m-proy-logo" placeholder="https://empresa.com/logo.png" oninput="previewProyLogo()"></div>
-      <div style="display:flex;align-items:center;padding-top:1.3rem;">
+      <div class="fg"><label class="fl">Logo empresa (URL o Base64)</label>
+        <div style="display:flex;gap:.4rem;align-items:center;">
+          <input class="fi" id="m-proy-logo" placeholder="https://empresa.com/logo.png" oninput="previewProyLogo()" style="flex:1;">
+          <label style="cursor:pointer;padding:.4rem .7rem;background:var(--purple-pale);border:1px solid var(--purple-mid);border-radius:var(--rs);font-size:.72rem;font-weight:700;color:var(--purple);white-space:nowrap;" title="Subir logo desde archivo">
+            📎 Subir
+            <input type="file" accept="image/*" style="display:none;" onchange="uploadProyLogo(this)">
+          </label>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;padding-top:1.3rem;gap:.5rem;">
         <img id="m-proy-logo-prev" src="" style="height:36px;max-width:100px;object-fit:contain;border:1px solid var(--border);border-radius:var(--rs);display:none;">
+      </div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Color primario de la empresa</label>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <input type="color" id="m-proy-color" value="#7B4FA6" style="width:40px;height:36px;border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;padding:2px;">
+          <input class="fi" id="m-proy-color-hex" value="#7B4FA6" placeholder="#7B4FA6" maxlength="7" style="width:90px;" oninput="syncColorHex(this)">
+          <span style="font-size:.7rem;color:var(--muted);">Aparece en el formulario público</span>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Color secundario</label>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <input type="color" id="m-proy-color2" value="#1264A3" style="width:40px;height:36px;border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;padding:2px;">
+          <input class="fi" id="m-proy-color2-hex" value="#1264A3" placeholder="#1264A3" maxlength="7" style="width:90px;" oninput="syncColorHex2(this)">
+        </div>
       </div>
     </div>
     <div class="fg"><label class="fl">Descripción</label><textarea class="fi" id="m-proy-desc" rows="2" placeholder="Descripción o mensaje de bienvenida para participantes…"></textarea></div>
@@ -1239,6 +1228,26 @@ function selChipVal(el, hid, val) {
   const h = document.getElementById(hid); if (h) h.value = val;
 }
 
+function uploadProyLogo(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('m-proy-logo').value = e.target.result;
+    previewProyLogo();
+  };
+  reader.readAsDataURL(file);
+}
+function syncColorHex(el) {
+  if (/^#[0-9A-Fa-f]{6}$/.test(el.value)) document.getElementById('m-proy-color').value = el.value;
+}
+function syncColorHex2(el) {
+  if (/^#[0-9A-Fa-f]{6}$/.test(el.value)) document.getElementById('m-proy-color2').value = el.value;
+}
+function syncColorPicker(inputId, hexId) {
+  const picker = document.getElementById(inputId);
+  const hex    = document.getElementById(hexId);
+  if (picker && hex) picker.addEventListener('input', e => { hex.value = e.target.value; });
+}
 function previewProyLogo() {
   const url = document.getElementById('m-proy-logo')?.value;
   const img = document.getElementById('m-proy-logo-prev');
@@ -1393,6 +1402,11 @@ function openEditProyecto() {
   document.getElementById('m-proy-tipo').value     = p.tipo||'clima';
   document.getElementById('m-proy-periodo').value  = p.periodo||'';
   document.getElementById('m-proy-logo').value     = p.logo||'';
+  const c1 = p.color1||'#7B4FA6'; const c2 = p.color2||'#1264A3';
+  const col1 = document.getElementById('m-proy-color'); if(col1) col1.value=c1;
+  const col1h = document.getElementById('m-proy-color-hex'); if(col1h) col1h.value=c1;
+  const col2 = document.getElementById('m-proy-color2'); if(col2) col2.value=c2;
+  const col2h = document.getElementById('m-proy-color2-hex'); if(col2h) col2h.value=c2;
   document.getElementById('m-proy-desc').value     = p.descripcion||'';
   document.getElementById('m-proy-escala').value   = p.escala||5;
   document.getElementById('m-proy-estado').value   = p.estado||'activo';
@@ -1415,6 +1429,8 @@ async function guardarProyecto() {
     id, nombre, empresa, tipo, escala,
     periodo:   document.getElementById('m-proy-periodo').value,
     logo:      document.getElementById('m-proy-logo').value.trim(),
+    color1:    document.getElementById('m-proy-color')?.value||'#7B4FA6',
+    color2:    document.getElementById('m-proy-color2')?.value||'#1264A3',
     descripcion:document.getElementById('m-proy-desc').value,
     estado:    document.getElementById('m-proy-estado').value,
     anonimato: document.getElementById('m-proy-anonimato').value,
@@ -1675,12 +1691,37 @@ function renderProjItemsHTML(projId, items, tipo) {
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
             <span style="font-size:.65rem;font-weight:800;color:var(--muted);min-width:18px;">${pi+1}</span>
             <input value="${(pText||'').replace(/"/g,'&quot;')}" style="flex:1;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Nunito',sans-serif;font-size:.78rem;outline:none;" oninput="_setPT('${tipo}',${di},${pi},this.value)">
-            <select style="padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-family:'Nunito',sans-serif;font-size:.72rem;outline:none;background:var(--white);cursor:pointer;" onchange="_setTT('${tipo}',${di},${pi},this.value)" title="Tipo de pregunta">
-              <option value="escala" ${pTipo==='escala'?'selected':''}>🔢 Escala</option>
-              <option value="abierta" ${pTipo==='abierta'?'selected':''}>💬 Abierta</option>
+            <select style="padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-family:'Nunito',sans-serif;font-size:.72rem;outline:none;background:var(--white);cursor:pointer;min-width:130px;" onchange="_setTT('${tipo}',${di},${pi},this.value)" title="Tipo de pregunta">
+              <option value="escala"     ${pTipo==='escala'?'selected':''}>🔢 Escala numérica</option>
+              <option value="abierta"    ${pTipo==='abierta'?'selected':''}>💬 Párrafo (texto)</option>
+              <option value="corta"      ${pTipo==='corta'?'selected':''}>✏️ Respuesta corta</option>
+              <option value="multiple"   ${pTipo==='multiple'?'selected':''}>🔘 Opción múltiple</option>
+              <option value="checkbox"   ${pTipo==='checkbox'?'selected':''}>☑️ Casillas de verificación</option>
+              <option value="desplegable"${pTipo==='desplegable'?'selected':''}>⬇️ Lista desplegable</option>
+              <option value="lineal"     ${pTipo==='lineal'?'selected':''}>↔️ Escala lineal</option>
+              <option value="calificacion"${pTipo==='calificacion'?'selected':''}>⭐ Calificación (estrellas)</option>
+              <option value="fecha"      ${pTipo==='fecha'?'selected':''}>📅 Fecha</option>
             </select>
             <button style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;" onclick="_rmPreg('${projId}','${tipo}',${di},${pi})" title="Eliminar">✕</button>
-          </div>`;
+          </div>
+          ${['multiple','checkbox','desplegable'].includes(pTipo) ? `
+          <div style="margin:4px 0 4px 18px;padding:6px 10px;background:var(--bg);border-radius:6px;">
+            ${(p2.opciones||['Opción 1']).map((op,oi)=>`
+              <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+                <span style="font-size:.7rem;color:var(--muted);">${pTipo==='checkbox'?'☐':pTipo==='multiple'?'○':'◉'}</span>
+                <input value="${(op||'').replace(/"/g,'&quot;')}" style="flex:1;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-family:'Nunito',sans-serif;font-size:.74rem;outline:none;" oninput="_setOpt('${tipo}',${di},${pi},${oi},this.value)">
+                <button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;" onclick="_rmOpt('${projId}','${tipo}',${di},${pi},${oi})">✕</button>
+              </div>`).join('')}
+            <button style="background:none;border:none;cursor:pointer;color:var(--purple);font-size:.72rem;font-weight:700;padding:2px 0;" onclick="_addOpt('${projId}','${tipo}',${di},${pi})">+ Agregar opción</button>
+          </div>` : ''}
+          ${pTipo==='lineal' ? `
+          <div style="margin:4px 0 4px 18px;display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--muted);">
+            <span>Mín:</span><input type="number" value="${p2.linMin||1}" min="0" max="10" style="width:46px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:.72rem;" oninput="_setLineal('${tipo}',${di},${pi},'linMin',this.value)">
+            <span>Máx:</span><input type="number" value="${p2.linMax||5}" min="1" max="10" style="width:46px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:.72rem;" oninput="_setLineal('${tipo}',${di},${pi},'linMax',this.value)">
+            <span style="color:var(--muted);font-style:italic;">(escala lineal numérica)</span>
+          </div>` : ''}
+          ${pTipo==='calificacion' ? `
+          <div style="margin:4px 0 4px 18px;font-size:.72rem;color:var(--muted);">⭐⭐⭐⭐⭐ &nbsp; Calificación de 1 a 5 estrellas</div>` : ''}`;
         }).join('')}
         <button class="btn btn-ghost btn-sm" onclick="_addPreg('${projId}','${tipo}',${di})">+ Pregunta</button>
       </div>
@@ -1689,7 +1730,32 @@ function renderProjItemsHTML(projId, items, tipo) {
 
 // ── Helpers edición cuestionario ──
 function _setPT(tipo,di,pi,val){const a=tipo==='dim'?_editDims:_editComps;const c=a[di].preguntas[pi];a[di].preguntas[pi]=typeof c==='object'?{...c,texto:val}:{texto:val,tipo:'escala'};}
-function _setTT(tipo,di,pi,val){const a=tipo==='dim'?_editDims:_editComps;const c=a[di].preguntas[pi];const t=typeof c==='object'?(c.texto||''):(c||'');a[di].preguntas[pi]={texto:t,tipo:val};}
+function _setTT(tipo,di,pi,val){
+  const a=tipo==='dim'?_editDims:_editComps;
+  const c=a[di].preguntas[pi];
+  const t=typeof c==='object'?(c.texto||''):(c||'');
+  const needsOpts=['multiple','checkbox','desplegable'];
+  const opts=needsOpts.includes(val)?(c.opciones||['Opción 1','Opción 2']):undefined;
+  const linMin=val==='lineal'?(c.linMin||1):undefined;
+  const linMax=val==='lineal'?(c.linMax||5):undefined;
+  a[di].preguntas[pi]={texto:t,tipo:val,...(opts?{opciones:opts}:{}),...(linMin!==undefined?{linMin,linMax}:{})};
+  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(currentProjectId,a,tipo);
+}
+function _setLineal(tipo,di,pi,field,val){const a=tipo==='dim'?_editDims:_editComps;a[di].preguntas[pi][field]=parseInt(val)||1;}
+function _addOpt(tipo,di,pi){
+  a[di].preguntas[pi].opciones=a[di].preguntas[pi].opciones||[];
+  a[di].preguntas[pi].opciones.push('Nueva opción');
+  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(currentProjectId,a,tipo);
+}
+function _rmOpt(tipo,di,pi,oi){
+  const a=tipo==='dim'?_editDims:_editComps;
+  a[di].preguntas[pi].opciones.splice(oi,1);
+  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(currentProjectId,a,tipo);
+}
+function _setOpt(tipo,di,pi,oi,val){
+  const a=tipo==='dim'?_editDims:_editComps;
+  a[di].preguntas[pi].opciones[oi]=val;
+}
 function _addPreg(projId,tipo,di){const a=tipo==='dim'?_editDims:_editComps;a[di].preguntas.push({texto:'Nueva pregunta',tipo:'escala'});document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);}
 function _rmPreg(projId,tipo,di,pi){const a=tipo==='dim'?_editDims:_editComps;a[di].preguntas.splice(pi,1);document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);}
 function _rmDimComp(projId,tipo,di){const a=tipo==='dim'?_editDims:_editComps;a.splice(di,1);document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);}
@@ -2562,94 +2628,79 @@ function dlChart(canvasId, filename) {
 }
 
 // ══════════════════════════════════════════
-// IA ANALYTICS — multi-proveedor
+// IA ANALYTICS — Rate-limited via Edge Function
 // ══════════════════════════════════════════
 
-const EDGE_FN_URL = `${SUPA_URL}/functions/v1/ai-proxy`;
-const EDGE_HEADERS = { 'Content-Type':'application/json', 'Authorization':`Bearer ${SUPA_KEY}`, 'apikey':SUPA_KEY };
+const IA_FN_URL = `${SUPA_URL}/functions/v1/ai-analisis`;
 
-function toggleIAProvider() {
-  const v = document.getElementById('cfg-ia-provider')?.value||'claude';
-  const cl = document.getElementById('cfg-ia-claude-info');
-  const oa = document.getElementById('cfg-ia-openai-info');
-  if (cl) cl.style.display = v==='claude'?'':'none';
-  if (oa) oa.style.display = v==='openai'?'':'none';
-}
+// Build structured prompt per the defined format
+function buildIAPrompt(p, resp, isClima, items, escala) {
+  const dimStats = getDimStats(items, resp, isClima, escala);
+  const scores   = resp.map(r=>r.score??calculateScore(r,p));
+  const avgScore = scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2):0;
+  const pct      = Math.round(parseFloat(avgScore)/escala*100);
+  const depts    = [...new Set(resp.map(r=>r.dept||r.ev_dept).filter(Boolean))];
+  const sorted   = [...dimStats].sort((a,b)=>b.pct-a.pct);
+  const deptData = depts.map(d=>{
+    const dd=resp.filter(r=>(r.dept||r.ev_dept)===d);
+    const sc=dd.map(r=>r.score??calculateScore(r,p));
+    return {dept:d,n:dd.length,avg:sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):0};
+  });
+  const data = {
+    empresa:   p.empresa,
+    tipo:      isClima?'Clima Organizacional':'Evaluación de Desempeño',
+    periodo:   p.periodo||'—',
+    total_resp: resp.length,
+    escala:    `1–${escala}`,
+    score_pct: `${pct}%`,
+    score_promedio: `${avgScore}/${escala}`,
+    clasificacion: sorted[0]?.pct>=80?'Favorable':sorted[0]?.pct>=65?'Aceptable':'En riesgo',
+    dimensiones: dimStats.map(d=>({nombre:d.titulo, promedio:`${d.avg.toFixed(2)}/${escala}`, pct:`${d.pct}%`})),
+    por_departamento: deptData,
+  };
+  return `Analiza los siguientes resultados de evaluación y genera un informe claro, breve y profesional.
 
-const EDGE_CODE = `import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+Datos:
+${JSON.stringify(data, null, 2)}
 
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+Instrucciones:
+- Identifica exactamente 2 fortalezas principales
+- Identifica exactamente 2 debilidades relevantes
+- Da exactamente 2 recomendaciones prácticas y accionables
+- Usa lenguaje profesional, directo y fácil de entender
+- No repitas datos numéricos innecesariamente
+- No inventes información fuera de los datos
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
-  try {
-    const { prompt, provider } = await req.json()
-    const useOpenAI = provider === 'openai'
-    let text = ''
+Formato de respuesta:
+Fortalezas:
+- ...
+- ...
 
-    if (useOpenAI) {
-      const key = Deno.env.get('OPENAI_API_KEY')
-      if (!key) throw new Error('OPENAI_API_KEY no configurada en Supabase Secrets')
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': \`Bearer \${key}\` },
-        body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 1500,
-          messages: [{ role: 'user', content: prompt }] })
-      })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error.message)
-      text = data.choices?.[0]?.message?.content || ''
-    } else {
-      const key = Deno.env.get('ANTHROPIC_API_KEY')
-      if (!key) throw new Error('ANTHROPIC_API_KEY no configurada en Supabase Secrets')
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json',
-          'x-api-key': key, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1500,
-          messages: [{ role: 'user', content: prompt }] })
-      })
-      const data = await res.json()
-      if (data.error) throw new Error(typeof data.error==='object'?data.error.message:data.error)
-      text = data.content?.[0]?.text || ''
-    }
+Debilidades:
+- ...
+- ...
 
-    return new Response(JSON.stringify({ text }), {
-      headers: { ...cors, 'Content-Type': 'application/json' }
-    })
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
-    })
-  }
-})`;
-
-function mostrarCodigoEdgeFunction() {
-  const box = document.getElementById('cfg-ia-code');
-  const pre = document.getElementById('cfg-ia-code-pre');
-  if (!box||!pre) return;
-  pre.textContent = EDGE_CODE;
-  box.style.display = box.style.display==='none'?'':'none';
-}
-
-function copiarCodigoEdgeFunction() {
-  navigator.clipboard?.writeText(EDGE_CODE)
-    .then(()=>showToast('✅ Código copiado','success'))
-    .catch(()=>prompt('Copia este código:',EDGE_CODE));
+Recomendaciones:
+- ...
+- ...`;
 }
 
 async function callIA(prompt) {
-  const provider = CFG.ia_provider||'claude';
-  const res = await fetch(EDGE_FN_URL, {
-    method: 'POST', headers: EDGE_HEADERS,
-    body: JSON.stringify({ prompt, provider })
+  // Get current user JWT for auth
+  const session = (await _supa.auth.getSession()).data?.session;
+  if (!session) throw new Error('Debes iniciar sesión para usar el análisis con IA');
+  const res = await fetch(IA_FN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+      'apikey': SUPA_KEY
+    },
+    body: JSON.stringify({ prompt })
   });
   if (!res.ok) {
     const e = await res.json().catch(()=>({}));
-    throw new Error(e.error || 'Error HTTP '+res.status);
+    throw new Error(e.error || `Error HTTP ${res.status}`);
   }
   const data = await res.json();
   if (data.error) throw new Error(data.error);
@@ -2658,59 +2709,33 @@ async function callIA(prompt) {
 
 async function probarIA() {
   const el = document.getElementById('cfg-ia-test');
-  if (el) { el.textContent='Probando…'; el.style.color='var(--muted)'; }
-  try {
-    const txt = await callIA('Responde exactamente con una sola palabra: OK');
-    const prov = (CFG.ia_provider||'claude')==='openai'?'ChatGPT (OpenAI)':'Claude (Anthropic)';
-    if (el) { el.textContent='✅ Conexión exitosa · '+prov+': '+txt.trim(); el.style.color='var(--green)'; }
-    showToast('✅ IA conectada','success');
-  } catch(err) {
-    if (el) { el.textContent='❌ '+err.message; el.style.color='var(--red)'; }
-    showToast('Error IA: '+err.message,'error');
-  }
+  // probarIA no aplica con nuevo sistema - IA está en pestaña Análisis de cada proyecto
+  if (el) { el.textContent = 'El análisis con IA está disponible en la pestaña Análisis de cada proyecto.'; el.style.color='var(--muted)'; }
 }
 
 async function generarIA(tipo) {
   const p = PROYECTOS.find(x=>x.id===currentProjectId); if (!p) return;
   const resp = RESPUESTAS.filter(r=>r.proyectoId===currentProjectId);
   if (!resp.length) { showToast('No hay respuestas para analizar','error'); return; }
-  const loadEl=document.getElementById('ia-loading');
-  const resEl=document.getElementById('ia-result');
-  const actEl=document.getElementById('ia-actions');
+  const loadEl = document.getElementById('ia-loading');
+  const resEl  = document.getElementById('ia-result');
+  const actEl  = document.getElementById('ia-actions');
   if (loadEl) loadEl.style.display='block';
   if (resEl)  { resEl.style.display='none'; resEl.textContent=''; }
-  const escala=parseInt(p.escala)||5, isClima=p.tipo==='clima';
-  const items=isClima?(p.dimensiones||DEFAULT_DIMS):(p.competencias||DEFAULT_COMPS);
-  const scores=resp.map(r=>r.score??calculateScore(r,p));
-  const avgScore=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'—';
-  const dimData=items.map((d,di)=>{
-    const vals=[];
-    if(isClima) resp.forEach(r=>d.preguntas.forEach((_,pi)=>{const v=r.dimResp?.['dim_'+di+'_'+pi];if(typeof v==='number')vals.push(v);}));
-    else resp.forEach(r=>d.preguntas.forEach((_,pi)=>{const v=r.compResp?.['comp_'+di+'_'+pi];if(typeof v==='number')vals.push(v);}));
-    return `${d.titulo}: ${vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):0}/${escala}`;
-  }).join(', ');
-  const depts=[...new Set(resp.map(r=>r.dept||r.ev_dept).filter(Boolean))];
-  const deptData=depts.map(d=>{const dd=resp.filter(r=>(r.dept||r.ev_dept)===d);const sc=dd.map(r=>r.score??calculateScore(r,p));return `${d}: ${sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):'—'}%`;}).join(', ');
-  const tipos={global:'resumen ejecutivo profesional',riesgos:'análisis de riesgos y alertas críticas',dept:'análisis comparativo por departamento',recom:'plan de recomendaciones estratégicas'};
-  const base=`Contexto: ${isClima?'Clima Organizacional':'Evaluación de Desempeño'}\nEmpresa: ${p.empresa} | Período: ${p.periodo||'—'}\nTotal respuestas: ${resp.length} | Escala: 1-${escala}\nScore promedio: ${avgScore}%\n${isClima?'Dimensiones':'Competencias'}: ${dimData}\nPor departamento: ${deptData}\n`;
-  let prompt='';
-  if (isClima) {
-    const prom=resp.filter(r=>r.recomienda==='Sí, definitivamente').length;
-    const det=resp.filter(r=>r.recomienda==='No').length;
-    const enps=resp.length?Math.round((prom-det)/resp.length*100):0;
-    const coments=resp.map(r=>r.positivo||'').filter(Boolean).slice(0,6).join(' | ');
-    const mejoras=resp.map(r=>r.mejoras||'').filter(Boolean).slice(0,6).join(' | ');
-    prompt=`${base}eNPS: ${enps} | Promotores: ${prom} | Detractores: ${det}\nComentarios positivos: ${coments}\nSugerencias de mejora: ${mejoras}\n\nGenera un ${tipos[tipo]} en español. Sé específico, profesional y orientado a acción.`;
-  } else {
-    const clasifs=(p.calibracion?.clasificaciones||DEFAULT_CALIBRATION.clasificaciones).map(c=>`${c.label}: ${resp.filter(r=>r.clasif===c.label).length}`).join(', ');
-    prompt=`${base}Distribución: ${clasifs}\n\nGenera un ${tipos[tipo]} en español. Sé específico, profesional y orientado a acción.`;
-  }
+  const escala  = parseInt(p.escala)||5;
+  const isClima = p.tipo==='clima';
+  const items   = isClima?(p.dimensiones||DEFAULT_DIMS):(p.competencias||DEFAULT_COMPS);
+  const prompt  = buildIAPrompt(p, resp, isClima, items, escala);
   try {
     const text = await callIA(prompt);
     if (resEl) { resEl.textContent=text; resEl.style.display='block'; }
     if (actEl) { actEl.style.display='flex'; }
   } catch(err) {
-    if (resEl) { resEl.textContent='❌ '+err.message+'\n\nVerifica la Edge Function en Configuración → 🤖 IA.'; resEl.style.display='block'; }
+    let msg = err.message;
+    if (msg.includes('límite') || msg.includes('limit') || msg.includes('5')) {
+      msg = '⏳ Has alcanzado el límite de 5 análisis hoy. Regresa mañana o contacta a IntraRHecursos para ampliar tu cuota.';
+    }
+    if (resEl) { resEl.textContent = '❌ '+msg; resEl.style.display='block'; }
     showToast('Error IA: '+err.message,'error');
   }
   finally { if (loadEl) loadEl.style.display='none'; }
@@ -2723,6 +2748,8 @@ function exportIAText() {
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   a.download=`IntraRH_IA_${p?.empresa||'Proyecto'}_${today()}.txt`; a.click();
 }
+
+
 
 
 
@@ -4132,6 +4159,26 @@ function activarModoParticipante() {
     const lw=document.getElementById('pub-logo-wrap'), li=document.getElementById('pub-logo-img');
     if (lw&&li) { li.src=p.logo; lw.style.display=''; li.onerror=()=>lw.style.display='none'; }
   }
+  // Brand colors — apply to form header, steps active, welcome header
+  const c1 = p.color1||'#7B4FA6'; const c2 = p.color2||'#1264A3';
+  // Welcome card header
+  const welHd = document.querySelector('.pub-welcome-hd');
+  if (welHd) welHd.style.background = `linear-gradient(135deg,${c1} 0%,${c2} 100%)`;
+  // Steps active color via CSS variable override
+  document.documentElement.style.setProperty('--pub-accent', c1);
+  document.documentElement.style.setProperty('--pub-accent2', c2);
+  // Inject dynamic style for pub form steps
+  let styleTag = document.getElementById('pub-brand-style');
+  if (!styleTag) { styleTag=document.createElement('style'); styleTag.id='pub-brand-style'; document.head.appendChild(styleTag); }
+  styleTag.textContent = `
+    .step.active { color:${c1} !important; border-bottom-color:${c1} !important; background:${c1}18 !important; }
+    .step.active .step-num { background:${c1} !important; }
+    .step.done .step-num { background:${c2} !important; }
+    .pub-progress-fill { background:linear-gradient(90deg,${c1},${c2}) !important; }
+    .scale-btn.sel { background:${c1} !important; border-color:${c1} !important; }
+    #pub-form-card .btn-primary { background:${c1} !important; border-color:${c1} !important; }
+    .pub-empresa-badge { background:rgba(255,255,255,.2); }
+  `;
   pubStep=0;
   renderPubForm();
 }
@@ -4353,12 +4400,63 @@ function renderClimaSec(areaId, step, resp, p) {
             const pregTipo = typeof preg==='object'?(preg.tipo||'escala'):'escala';
             const key = `dim_${di}_${pi}`;
             const cur = resp.dimResp?.[key]||0;
-            if (pregTipo==='abierta') {
+            if (pregTipo==='abierta'||pregTipo==='corta') {
+              const isLong = pregTipo==='abierta';
               return `<div class="scale-g">
                 <div class="scale-q">${pi+1}. ${pregTxt}</div>
-                <textarea class="fi" id="txt_pub_${key}" rows="2" placeholder="Escribe tu respuesta aquí…" oninput="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=this.value;">${resp.dimResp?.[key]||''}</textarea>
+                ${isLong
+                  ? `<textarea class="fi" rows="3" placeholder="Escribe tu respuesta aquí…" oninput="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=this.value;" style="resize:vertical;">${resp.dimResp?.[key]||''}</textarea>`
+                  : `<input class="fi" type="text" placeholder="Respuesta corta…" value="${resp.dimResp?.[key]||''}" oninput="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=this.value;">`}
               </div>`;
             }
+            if (pregTipo==='multiple'||pregTipo==='checkbox') {
+              const opts = preg.opciones||['Opción 1','Opción 2'];
+              const isCheck = pregTipo==='checkbox';
+              return `<div class="scale-g">
+                <div class="scale-q">${pi+1}. ${pregTxt}</div>
+                <div style="display:flex;flex-direction:column;gap:.4rem;margin-top:.4rem;">
+                  ${opts.map((op,oi)=>`<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;">
+                    <input type="${isCheck?'checkbox':'radio'}" name="pub_${key}" value="${oi}" onchange="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=${isCheck?`(pubResp.dimResp?.['${key}']||[]).includes(${oi})?(pubResp.dimResp['${key}'].filter(x=>x!==${oi})):[...(pubResp.dimResp?.['${key}']||[]),${oi}]`:oi};"> ${op}</label>`).join('')}
+                </div>
+              </div>`;
+            }
+            if (pregTipo==='desplegable') {
+              const opts = preg.opciones||['Opción 1'];
+              return `<div class="scale-g">
+                <div class="scale-q">${pi+1}. ${pregTxt}</div>
+                <select class="fi" style="max-width:320px;" onchange="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=this.value;">
+                  <option value="">Seleccionar…</option>
+                  ${opts.map((op,oi)=>`<option value="${oi}" ${resp.dimResp?.[key]==oi?'selected':''}>${op}</option>`).join('')}
+                </select>
+              </div>`;
+            }
+            if (pregTipo==='calificacion') {
+              const curVal = resp.dimResp?.[key]||0;
+              return `<div class="scale-g">
+                <div class="scale-q">${pi+1}. ${pregTxt}</div>
+                <div style="display:flex;gap:.3rem;margin-top:.5rem;">
+                  ${[1,2,3,4,5].map(n=>`<button onclick="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=${n};this.closest('.scale-g').querySelectorAll('.star-btn').forEach((s,i)=>{s.style.color=i<${n}?'#F39C12':'#ccc';});" class="star-btn" style="background:none;border:none;cursor:pointer;font-size:1.6rem;color:${n<=curVal?'#F39C12':'#ccc'};">★</button>`).join('')}
+                </div>
+              </div>`;
+            }
+            if (pregTipo==='fecha') {
+              return `<div class="scale-g">
+                <div class="scale-q">${pi+1}. ${pregTxt}</div>
+                <input type="date" class="fi" style="max-width:200px;" value="${resp.dimResp?.[key]||''}" onchange="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=this.value;">
+              </div>`;
+            }
+            if (pregTipo==='lineal') {
+              const linMin=preg.linMin||1; const linMax=preg.linMax||5;
+              const range=Array.from({length:linMax-linMin+1},(_,i)=>linMin+i);
+              return `<div class="scale-g">
+                <div class="scale-q">${pi+1}. ${pregTxt}</div>
+                <div class="scale-bar" id="sb_pub_${key}">
+                  ${range.map(n=>`<button class="scale-btn${cur>=n?' sel':''}" onclick="pubSelScale('dim','${key}',${n},${linMax})">${n}</button>`).join('')}
+                </div>
+                <div class="scale-endpoints" style="max-width:${range.length*43}px;"><span>${linMin}</span><span>${linMax}</span></div>
+              </div>`;
+            }
+            // Default: escala numérica
             return `<div class="scale-g">
               <div class="scale-q">${pi+1}. ${pregTxt}</div>
               <div class="scale-bar" id="sb_pub_${key}">
@@ -4456,11 +4554,47 @@ function renderEvalSec(areaId, step, resp, p) {
             const pregTxt = typeof preg==='object'?(preg.texto||preg):(preg||'');
             const pregTipo = typeof preg==='object'?(preg.tipo||'escala'):'escala';
             const key=`comp_${ci}_${pi}`; const cur=resp.compResp?.[key]||0;
-            if (pregTipo==='abierta') {
-              return `<div class="scale-g">
-                <div class="scale-q">${pi+1}. ${pregTxt}</div>
-                <textarea class="fi" id="txt_pub_${key}" rows="2" placeholder="Escribe tu respuesta aquí…" oninput="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=this.value;">${resp.compResp?.[key]||''}</textarea>
+            if (pregTipo==='abierta'||pregTipo==='corta') {
+              const isLong=pregTipo==='abierta';
+              return `<div class="scale-g"><div class="scale-q">${pi+1}. ${pregTxt}</div>
+                ${isLong?`<textarea class="fi" rows="3" placeholder="Escribe tu respuesta…" oninput="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=this.value;" style="resize:vertical;">${resp.compResp?.[key]||''}</textarea>`
+                :`<input class="fi" type="text" placeholder="Respuesta corta…" value="${resp.compResp?.[key]||''}" oninput="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=this.value;">`}
               </div>`;
+            }
+            if (pregTipo==='multiple'||pregTipo==='checkbox') {
+              const opts=preg.opciones||['Opción 1','Opción 2']; const isCheck=pregTipo==='checkbox';
+              return `<div class="scale-g"><div class="scale-q">${pi+1}. ${pregTxt}</div>
+                <div style="display:flex;flex-direction:column;gap:.4rem;margin-top:.4rem;">
+                  ${opts.map((op,oi)=>`<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;"><input type="${isCheck?'checkbox':'radio'}" name="pub_${key}" value="${oi}" onchange="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=${isCheck?`(pubResp.compResp?.['${key}']||[]).includes(${oi})?(pubResp.compResp['${key}'].filter(x=>x!==${oi})):[...(pubResp.compResp?.['${key}']||[]),${oi}]`:oi};"> ${op}</label>`).join('')}
+                </div></div>`;
+            }
+            if (pregTipo==='desplegable') {
+              const opts=preg.opciones||['Opción 1'];
+              return `<div class="scale-g"><div class="scale-q">${pi+1}. ${pregTxt}</div>
+                <select class="fi" style="max-width:320px;" onchange="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=this.value;">
+                  <option value="">Seleccionar…</option>
+                  ${opts.map((op,oi)=>`<option value="${oi}">${op}</option>`).join('')}
+                </select></div>`;
+            }
+            if (pregTipo==='calificacion') {
+              const curVal=resp.compResp?.[key]||0;
+              return `<div class="scale-g"><div class="scale-q">${pi+1}. ${pregTxt}</div>
+                <div style="display:flex;gap:.3rem;margin-top:.5rem;">
+                  ${[1,2,3,4,5].map(n=>`<button onclick="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=${n};this.closest('.scale-g').querySelectorAll('.star-btn').forEach((s,i)=>{s.style.color=i<${n}?'#F39C12':'#ccc';});" class="star-btn" style="background:none;border:none;cursor:pointer;font-size:1.6rem;color:${n<=curVal?'#F39C12':'#ccc'};">★</button>`).join('')}
+                </div></div>`;
+            }
+            if (pregTipo==='fecha') {
+              return `<div class="scale-g"><div class="scale-q">${pi+1}. ${pregTxt}</div>
+                <input type="date" class="fi" style="max-width:200px;" onchange="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=this.value;"></div>`;
+            }
+            if (pregTipo==='lineal') {
+              const linMin=preg.linMin||1; const linMax=preg.linMax||5;
+              const range=Array.from({length:linMax-linMin+1},(_,i)=>linMin+i);
+              return `<div class="scale-g"><div class="scale-q">${pi+1}. ${pregTxt}</div>
+                <div class="scale-bar" id="sb_pub_${key}">
+                  ${range.map(n=>`<button class="scale-btn${cur>=n?' sel':''}" onclick="pubSelScale('comp','${key}',${n},${linMax})">${n}</button>`).join('')}
+                </div>
+                <div class="scale-endpoints" style="max-width:${range.length*43}px;"><span>${linMin}</span><span>${linMax}</span></div></div>`;
             }
             return `<div class="scale-g">
               <div class="scale-q">${pi+1}. ${pregTxt}</div>
@@ -4567,6 +4701,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       const { data:{ session } } = await _supa.auth.getSession();
       if (session?.user) await onLoginSuccess(session.user);
     } catch(e) { console.warn('session check:', e); }
+    // Sync color pickers
+    syncColorPicker('m-proy-color','m-proy-color-hex');
+    syncColorPicker('m-proy-color2','m-proy-color2-hex');
   }
 });
 
