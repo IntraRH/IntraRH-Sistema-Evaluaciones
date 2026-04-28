@@ -455,7 +455,6 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 
 <!-- ─── CONFIGURACIÓN ─── -->
 <div id="panel-configuracion" class="panel">
-<div id="panel-configuracion" class="panel">
   <div class="ph">
     <div><div class="ph-title">⚙️ Configuración</div><div class="ph-sub">Parámetros generales del sistema</div></div>
     <div class="ph-actions"><button class="btn btn-primary" onclick="guardarConfig()">💾 Guardar</button></div>
@@ -1427,7 +1426,7 @@ function calculateScore(resp, p) {
     const vals = [];
     dims.forEach((d,di) => d.preguntas.forEach((_,pi) => {
       const v = resp.dimResp?.['dim_'+di+'_'+pi];
-      if (v) vals.push(v);
+      if (v && typeof v==='number') vals.push(v);
     }));
     if (!vals.length) return 0;
     const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
@@ -1438,7 +1437,7 @@ function calculateScore(resp, p) {
     const compVals = [];
     comps.forEach((c,ci) => c.preguntas.forEach((_,pi) => {
       const v = resp.compResp?.['comp_'+ci+'_'+pi];
-      if (v) compVals.push(v);
+      if (v && typeof v==='number') compVals.push(v);
     }));
     const compScore = compVals.length ? (compVals.reduce((a,b)=>a+b,0)/compVals.length/escala)*100 : 0;
     const objPcts = (resp.objetivos||[]).map(o => parseInt(o.pct)||0);
@@ -1460,6 +1459,9 @@ function recalcularRespuestas(p) {
   });
   saveDB('irh_respuestas',RESPUESTAS);
 }
+
+// Helper para obtener texto de pregunta (compatible con string y objeto)
+function getPregText(p) { return typeof p==='object'?(p.texto||''):(p||''); }
 
 // ══════════════════════════════════════════
 // CUESTIONARIO (PROJECT TAB)
@@ -1501,19 +1503,34 @@ function renderProjItemsHTML(projId, items, tipo) {
         <div style="width:22px;height:22px;border-radius:50%;background:var(--${color});color:#fff;font-size:.65rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${di+1}</div>
         <input value="${(d.titulo||'').replace(/"/g,'&quot;')}" style="flex:1;font-weight:800;font-size:.82rem;border:none;background:transparent;outline:none;font-family:'Nunito',sans-serif;" oninput="${tipo==='dim'?'_editDims':'_editComps'}[${di}].titulo=this.value">
         <input value="${(d.desc||'').replace(/"/g,'&quot;')}" style="flex:2;font-size:.72rem;border:none;background:transparent;outline:none;font-family:'Nunito',sans-serif;color:var(--muted);" oninput="${tipo==='dim'?'_editDims':'_editComps'}[${di}].desc=this.value" placeholder="Descripción">
-        <button class="btn btn-danger btn-sm" onclick="${tipo==='dim'?'_editDims':'_editComps'}.splice(${di},1);document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML('${projId}',${tipo==='dim'?'_editDims':'_editComps'},'${tipo}')">✕</button>
+        <button class="btn btn-danger btn-sm" onclick="_rmDimComp('${projId}','${tipo}',${di})">✕</button>
       </div>
       <div style="padding:10px 14px;">
-        ${(d.preguntas||[]).map((p2,pi) => `
+        ${(d.preguntas||[]).map((p2,pi) => {
+          const pText = typeof p2==='object'?(p2.texto||''):(p2||'');
+          const pTipo = typeof p2==='object'?(p2.tipo||'escala'):'escala';
+          return `
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
             <span style="font-size:.65rem;font-weight:800;color:var(--muted);min-width:18px;">${pi+1}</span>
-            <input value="${(p2||'').replace(/"/g,'&quot;')}" style="flex:1;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Nunito',sans-serif;font-size:.78rem;outline:none;" oninput="${tipo==='dim'?'_editDims':'_editComps'}[${di}].preguntas[${pi}]=this.value">
-            <button style="background:none;border:none;cursor:pointer;color:var(--muted);" onclick="${tipo==='dim'?'_editDims':'_editComps'}[${di}].preguntas.splice(${pi},1);document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML('${projId}',${tipo==='dim'?'_editDims':'_editComps'},'${tipo}')">✕</button>
-          </div>`).join('')}
-        <button class="btn btn-ghost btn-sm" onclick="${tipo==='dim'?'_editDims':'_editComps'}[${di}].preguntas.push('Nueva pregunta');document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML('${projId}',${tipo==='dim'?'_editDims':'_editComps'},'${tipo}')">+ Pregunta</button>
+            <input value="${(pText||'').replace(/"/g,'&quot;')}" style="flex:1;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Nunito',sans-serif;font-size:.78rem;outline:none;" oninput="_setPT('${tipo}',${di},${pi},this.value)">
+            <select style="padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-family:'Nunito',sans-serif;font-size:.72rem;outline:none;background:var(--white);cursor:pointer;" onchange="_setTT('${tipo}',${di},${pi},this.value)" title="Tipo de pregunta">
+              <option value="escala" ${pTipo==='escala'?'selected':''}>🔢 Escala</option>
+              <option value="abierta" ${pTipo==='abierta'?'selected':''}>💬 Abierta</option>
+            </select>
+            <button style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;" onclick="_rmPreg('${projId}','${tipo}',${di},${pi})" title="Eliminar">✕</button>
+          </div>`;
+        }).join('')}
+        <button class="btn btn-ghost btn-sm" onclick="_addPreg('${projId}','${tipo}',${di})">+ Pregunta</button>
       </div>
     </div>`).join('');
 }
+
+// ── Helpers edición cuestionario ──
+function _setPT(tipo,di,pi,val){const a=tipo==='dim'?_editDims:_editComps;const c=a[di].preguntas[pi];a[di].preguntas[pi]=typeof c==='object'?{...c,texto:val}:{texto:val,tipo:'escala'};}
+function _setTT(tipo,di,pi,val){const a=tipo==='dim'?_editDims:_editComps;const c=a[di].preguntas[pi];const t=typeof c==='object'?(c.texto||''):(c||'');a[di].preguntas[pi]={texto:t,tipo:val};}
+function _addPreg(projId,tipo,di){const a=tipo==='dim'?_editDims:_editComps;a[di].preguntas.push({texto:'Nueva pregunta',tipo:'escala'});document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);}
+function _rmPreg(projId,tipo,di,pi){const a=tipo==='dim'?_editDims:_editComps;a[di].preguntas.splice(pi,1);document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);}
+function _rmDimComp(projId,tipo,di){const a=tipo==='dim'?_editDims:_editComps;a.splice(di,1);document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);}
 
 function renderProjObjsHTML(projId, objs) {
   _editObjs = JSON.parse(JSON.stringify(objs));
@@ -1533,8 +1550,8 @@ function renderProjObjsHTML(projId, objs) {
 }
 
 function addProjItem(tipo) {
-  if (tipo==='dim') _editDims.push({titulo:'Nueva dimensión',desc:'',preguntas:['Nueva pregunta']});
-  else              _editComps.push({titulo:'Nueva competencia',desc:'',preguntas:['Nueva pregunta']});
+  if (tipo==='dim') _editDims.push({titulo:'Nueva dimensión',desc:'',preguntas:[{texto:'Nueva pregunta',tipo:'escala'}]});
+  else              _editComps.push({titulo:'Nueva competencia',desc:'',preguntas:[{texto:'Nueva pregunta',tipo:'escala'}]});
   const cont = document.getElementById('proj-items-cont');
   if (cont) cont.innerHTML = renderProjItemsHTML(currentProjectId, tipo==='dim'?_editDims:_editComps, tipo);
 }
@@ -1784,14 +1801,19 @@ function filterParticipantes(projId) {
 }
 
 // ── TOKEN / LINK ──
+function getBaseURL() {
+  // Normaliza la URL base para que funcione en GitHub Pages y cualquier hosting
+  const href = window.location.href.split('?')[0].split('#')[0];
+  // Si termina en / agregar index.html no es necesario, retornar tal cual
+  return href;
+}
+
 function buildParticipantLink(pt) {
-  const base = window.location.href.split('?')[0];
-  return `${base}?token=${pt.token}`;
+  return `${getBaseURL()}?token=${pt.token}`;
 }
 
 function buildLinkURL(link) {
-  const base = window.location.href.split('?')[0];
-  return `${base}?proyectoId=${link.proyectoId}&token=${link.token}`;
+  return `${getBaseURL()}?proyectoId=${link.proyectoId}&token=${link.token}`;
 }
 
 function copiarLinkParticipante(id) {
@@ -2142,8 +2164,14 @@ function verRespDetalle(id) {
       const avg  = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '—';
       html += `<div style="font-weight:800;font-size:.82rem;color:var(--purple);margin-bottom:.3rem;">${di+1}. ${d.titulo} — ${avg}/${escala}</div>`;
       d.preguntas.forEach((preg,pi) => {
-        const v = r.dimResp?.['dim_'+di+'_'+pi]||'—';
-        html += `<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:.2rem 0;border-bottom:1px solid var(--border);"><span>${preg}</span><span style="font-weight:800;color:var(--purple);">${v}/${escala}</span></div>`;
+        const pregTxt = getPregText(preg);
+        const pregTipo = typeof preg==='object'?(preg.tipo||'escala'):'escala';
+        const v = r.dimResp?.['dim_'+di+'_'+pi];
+        if (pregTipo==='abierta') {
+          html += `<div style="font-size:.78rem;padding:.2rem 0;border-bottom:1px solid var(--border);"><span style="color:var(--muted);">${pregTxt}</span><div style="margin-top:2px;font-style:italic;">${v||'Sin respuesta'}</div></div>`;
+        } else {
+          html += `<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:.2rem 0;border-bottom:1px solid var(--border);"><span>${pregTxt}</span><span style="font-weight:800;color:var(--purple);">${v||'—'}/${escala}</span></div>`;
+        }
       });
       html += '<br>';
     });
@@ -2695,37 +2723,54 @@ async function exportPPTXProj(p,resp,isClima,items,escala){
 // REPORTES (panel global)
 // ══════════════════════════════════════════
 function renderReportes() {
-  const cont = document.getElementById('panel-reportes');
+  const cont = document.getElementById('reportes-content');
   if (!cont) return;
   const myProj = PROYECTOS.filter(p=>checkAccess(p.id));
+  if (!myProj.length) {
+    cont.innerHTML='<div style="text-align:center;padding:3rem;color:var(--muted);"><div style="font-size:2.5rem;">📋</div><div style="font-weight:700;margin-top:.8rem;">Sin proyectos disponibles</div></div>';
+    return;
+  }
   cont.innerHTML = `
-    <div class="ph"><div><div class="ph-title">📋 Reportes</div><div class="ph-sub">Genera informes de cualquier proyecto</div></div></div>
-    <div class="nota-blue">Selecciona un proyecto para generar su informe.</div>
-    ${myProj.length?`
-    <div class="fg"><label class="fl">Proyecto</label>
-      <select class="fi" id="rep-sel-proj" style="max-width:400px;" onchange="updateRepProj()">
+    <div class="nota-blue">Selecciona un proyecto para generar su informe ejecutivo.</div>
+    <div class="fg" style="max-width:440px;margin-bottom:1rem;">
+      <label class="fl">Proyecto</label>
+      <select class="fi" id="rep-sel-proj" onchange="updateRepProj()">
         <option value="">Seleccionar proyecto…</option>
-        ${myProj.map(p=>`<option value="${p.id}">${p.empresa} — ${p.nombre}</option>`).join('')}
+        ${myProj.map(p=>`<option value="${p.id}">${p.empresa} — ${p.nombre} (${p.tipo==='clima'?'Clima':'Desempeño'})</option>`).join('')}
       </select>
     </div>
-    <div id="rep-proj-info" style="margin-top:.8rem;"></div>`
-    :'<div style="color:var(--muted);">Sin proyectos disponibles.</div>'}`;
+    <div id="rep-proj-info" style="margin-top:.8rem;"></div>`;
 }
 
 function updateRepProj() {
   const id = document.getElementById('rep-sel-proj')?.value; if (!id) return;
   const p  = PROYECTOS.find(x=>x.id===id); if (!p) return;
   const resp = RESPUESTAS.filter(r=>r.proyectoId===id);
+  const part = PARTICIPANTES.filter(x=>x.proyecto_id===id);
+  const scores = resp.map(r=>r.score??calculateScore(r,p));
+  const avgScore = scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
   document.getElementById('rep-proj-info').innerHTML = `
     <div class="card"><div class="card-body">
-      <div style="font-weight:800;margin-bottom:.4rem;">${p.nombre} · ${p.empresa}</div>
-      <div style="font-size:.78rem;color:var(--muted);margin-bottom:.8rem;">${resp.length} respuestas · ${p.tipo==='clima'?'Clima':'Desempeño'} · ${p.periodo||'—'}</div>
+      <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.9rem;">
+        ${p.logo?`<img src="${p.logo}" style="height:32px;object-fit:contain;" onerror="this.style.display='none'">`:''}
+        <div>
+          <div style="font-weight:900;font-size:1rem;">${p.nombre}</div>
+          <div style="font-size:.75rem;color:var(--muted);">${p.empresa} · ${p.tipo==='clima'?'🌡️ Clima':'📋 Desempeño'} · ${p.periodo||'—'}</div>
+        </div>
+      </div>
+      <div class="g4" style="margin-bottom:1rem;">
+        ${kpiCard('📝','Respuestas','purple',resp.length)}
+        ${kpiCard('👥','Participantes','blue',part.length)}
+        ${kpiCard('⭐','Score Prom.','yellow',avgScore+'%')}
+        ${kpiCard('📈','Participación','green',part.length>0?Math.round(resp.length/part.length*100)+'%':'—')}
+      </div>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" onclick="currentProjectId='${id}';exportAnalisis('pdf')">📕 PDF</button>
-        <button class="btn btn-ghost btn-sm" onclick="currentProjectId='${id}';exportAnalisis('pptx')">📑 PPTX</button>
+        <button class="btn btn-primary btn-sm" onclick="currentProjectId='${id}';exportAnalisis('pdf')">📕 PDF Ejecutivo</button>
+        <button class="btn btn-ghost btn-sm" onclick="currentProjectId='${id}';exportAnalisis('pptx')">📑 PowerPoint</button>
         <button class="btn btn-ghost btn-sm" onclick="currentProjectId='${id}';exportAnalisis('xlsx')">📊 Excel</button>
         <button class="btn btn-ghost btn-sm" onclick="currentProjectId='${id}';exportAnalisis('word')">📘 Word</button>
         <button class="btn btn-ghost btn-sm" onclick="currentProjectId='${id}';exportAnalisis('csv')">📄 CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="openProject('${id}')">🔍 Ir al proyecto →</button>
       </div>
     </div></div>`;
 }
@@ -3222,10 +3267,18 @@ function renderClimaSec(areaId, step, resp, p) {
         </div>
         <div class="dim-body">
           ${dim.preguntas.map((preg,pi) => {
+            const pregTxt = typeof preg==='object'?(preg.texto||preg):(preg||'');
+            const pregTipo = typeof preg==='object'?(preg.tipo||'escala'):'escala';
             const key = `dim_${di}_${pi}`;
             const cur = resp.dimResp?.[key]||0;
+            if (pregTipo==='abierta') {
+              return `<div class="scale-g">
+                <div class="scale-q">${pi+1}. ${pregTxt}</div>
+                <textarea class="fi" id="txt_pub_${key}" rows="2" placeholder="Escribe tu respuesta aquí…" oninput="if(!pubResp.dimResp)pubResp.dimResp={};pubResp.dimResp['${key}']=this.value;">${resp.dimResp?.[key]||''}</textarea>
+              </div>`;
+            }
             return `<div class="scale-g">
-              <div class="scale-q">${pi+1}. ${preg}</div>
+              <div class="scale-q">${pi+1}. ${pregTxt}</div>
               <div class="scale-bar" id="sb_pub_${key}">
                 ${Array.from({length:escala},(_,j)=>`<button class="scale-btn${cur>j?' sel':''}" onclick="pubSelScale('dim','${key}',${j+1},${escala})">${j+1}</button>`).join('')}
               </div>
@@ -3318,9 +3371,17 @@ function renderEvalSec(areaId, step, resp, p) {
         </div>
         <div class="dim-body">
           ${c.preguntas.map((preg,pi) => {
+            const pregTxt = typeof preg==='object'?(preg.texto||preg):(preg||'');
+            const pregTipo = typeof preg==='object'?(preg.tipo||'escala'):'escala';
             const key=`comp_${ci}_${pi}`; const cur=resp.compResp?.[key]||0;
+            if (pregTipo==='abierta') {
+              return `<div class="scale-g">
+                <div class="scale-q">${pi+1}. ${pregTxt}</div>
+                <textarea class="fi" id="txt_pub_${key}" rows="2" placeholder="Escribe tu respuesta aquí…" oninput="if(!pubResp.compResp)pubResp.compResp={};pubResp.compResp['${key}']=this.value;">${resp.compResp?.[key]||''}</textarea>
+              </div>`;
+            }
             return `<div class="scale-g">
-              <div class="scale-q">${pi+1}. ${preg}</div>
+              <div class="scale-q">${pi+1}. ${pregTxt}</div>
               <div class="scale-bar" id="sb_pub_${key}">
                 ${Array.from({length:escala},(_,j)=>`<button class="scale-btn${cur>j?' sel':''}" onclick="pubSelScale('comp','${key}',${j+1},${escala})">${j+1}</button>`).join('')}
               </div>
@@ -3445,64 +3506,6 @@ function openNewProyModal() {
   openModal('m-proyecto');
 }
 
-// Patch goPanel para reportes
-const _baseGoPanel = goPanel;
-window.goPanel = function(id, el) {
-  _baseGoPanel(id, el);
-  if(id==='reportes') renderReportesPanel();
-};
-
-function renderReportesPanel() {
-  const cont = document.getElementById('reportes-content'); if(!cont) return;
-  const myProj = PROYECTOS.filter(p=>checkAccess(p.id));
-  if(!myProj.length){
-    cont.innerHTML='<div style="text-align:center;padding:3rem;color:var(--muted);"><div style="font-size:2.5rem;">📋</div><div style="font-weight:700;margin-top:.8rem;">Sin proyectos disponibles</div></div>';
-    return;
-  }
-  cont.innerHTML = `
-    <div class="nota-blue">Selecciona un proyecto para generar su informe ejecutivo directamente desde aquí.</div>
-    <div class="fg" style="max-width:440px;margin-bottom:1rem;">
-      <label class="fl">Proyecto</label>
-      <select class="fi" id="rep-sel-proj" onchange="updateRepProj()">
-        <option value="">Seleccionar proyecto…</option>
-        ${myProj.map(p=>`<option value="${p.id}">${p.empresa} — ${p.nombre} (${p.tipo==='clima'?'Clima':'Desempeño'})</option>`).join('')}
-      </select>
-    </div>
-    <div id="rep-proj-info"></div>`;
-}
-
-function updateRepProj() {
-  const id = document.getElementById('rep-sel-proj')?.value; if(!id) return;
-  const p  = PROYECTOS.find(x=>x.id===id); if(!p) return;
-  const resp = RESPUESTAS.filter(r=>r.proyectoId===id);
-  const part = PARTICIPANTES.filter(x=>x.proyecto_id===id);
-  const scores = resp.map(r=>r.score||0);
-  const avgScore = scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
-  document.getElementById('rep-proj-info').innerHTML = `
-    <div class="card"><div class="card-body">
-      <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.9rem;">
-        ${p.logo?`<img src="${p.logo}" style="height:32px;object-fit:contain;" onerror="this.style.display='none'">`:''}
-        <div>
-          <div style="font-weight:900;font-size:1rem;">${p.nombre}</div>
-          <div style="font-size:.75rem;color:var(--muted);">${p.empresa} · ${p.tipo==='clima'?'🌡️ Clima':'📋 Desempeño'} · ${p.periodo||'—'}</div>
-        </div>
-      </div>
-      <div class="g4" style="margin-bottom:1rem;">
-        ${kpiCard('📝','Respuestas','purple',resp.length)}
-        ${kpiCard('👥','Participantes','blue',part.length)}
-        ${kpiCard('⭐','Score','yellow',avgScore+'%')}
-        ${kpiCard('📈','Participación','green',part.length>0?Math.round(resp.length/part.length*100)+'%':'—')}
-      </div>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" onclick="currentProjectId='${id}';exportAnalisis('pdf')">📕 PDF Ejecutivo</button>
-        <button class="btn btn-ghost btn-sm" onclick="currentProjectId='${id}';exportAnalisis('pptx')">📑 PowerPoint</button>
-        <button class="btn btn-ghost btn-sm" onclick="currentProjectId='${id}';exportAnalisis('xlsx')">📊 Excel</button>
-        <button class="btn btn-ghost btn-sm" onclick="currentProjectId='${id}';exportAnalisis('word')">📘 Word</button>
-        <button class="btn btn-ghost btn-sm" onclick="currentProjectId='${id}';exportAnalisis('csv')">📄 CSV</button>
-        <button class="btn btn-ghost btn-sm" onclick="openProject('${id}')">🔍 Ir al proyecto →</button>
-      </div>
-    </div></div>`;
-}
 
 </script>
 </body>
