@@ -27,15 +27,16 @@
 body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
 
 /* ── SIDEBAR ── */
-.sidebar{width:230px;background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;box-shadow:2px 0 12px rgba(123,79,166,.05);}
+.sidebar{width:230px;background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:200;box-shadow:2px 0 12px rgba(123,79,166,.05);}
 .sidebar-logo{padding:1.1rem 1rem 1rem;border-bottom:1px solid var(--border);}
 .logo-text{font-weight:900;font-size:18px;color:var(--purple);line-height:1.1;}
 .logo-text em{font-style:normal;color:var(--purple-l);}
 .logo-sub{font-size:.58rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:2px;}
 .sidebar-nav{padding:.6rem;flex:1;overflow-y:auto;}
 .nav-label{font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:.6rem .7rem .25rem;}
-.nav-item{display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;border-radius:var(--rs);font-size:.82rem;font-weight:700;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:.05rem;border:1.5px solid transparent;}
+.nav-item{display:flex;align-items:center;gap:.6rem;padding:.65rem .8rem;border-radius:var(--rs);font-size:.82rem;font-weight:700;color:var(--muted);cursor:pointer;transition:all .15s;margin-bottom:.05rem;border:1.5px solid transparent;-webkit-tap-highlight-color:rgba(123,79,166,.15);touch-action:manipulation;user-select:none;}
 .nav-item:hover{background:var(--purple-pale);color:var(--purple);}
+.nav-item:active{background:var(--purple-pale);color:var(--purple);}
 .nav-item.active{background:var(--purple-pale);color:var(--purple);border-color:var(--purple-mid);}
 .nav-icon{font-size:.95rem;width:18px;text-align:center;flex-shrink:0;}
 .sidebar-user{padding:.7rem .8rem;border-top:1px solid var(--border);}
@@ -308,7 +309,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 
 /* ── RESPONSIVE ── */
 #menu-toggle{display:none;position:fixed;top:.7rem;left:.8rem;z-index:200;background:var(--purple);color:#fff;border:none;border-radius:var(--rs);width:38px;height:38px;font-size:1.1rem;cursor:pointer;align-items:center;justify-content:center;box-shadow:var(--sh-md);}
-#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:150;}
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:190;}
 #sidebar-overlay.vis{display:block;}
 @media(max-width:768px){
   #menu-toggle{display:flex;}
@@ -2877,8 +2878,30 @@ function renderTabInformes(p, resp, escala) {
 }
 
 // ══════════════════════════════════════════
-// EXPORTACIONES (Análisis completo)
+// WRAPPERS DE EXPORTACIÓN
 // ══════════════════════════════════════════
+
+// Llamado desde el modal "Exportar proyecto" (botones Excel, CSV, PDF, Word, PPTX, IA)
+function exportProj(fmt) {
+  closeModal('m-export-dropdown');
+  if (fmt === 'ia') { goProjTab('analisis', document.getElementById('nav-proj-analisis')); return; }
+  exportAnalisis(fmt);
+}
+
+// Llamado desde la pestaña Informes → Informe individual
+function exportRespIndividual(fmt) {
+  const respId = document.getElementById('sel-resp-ind')?.value;
+  if (!respId) { showToast('Selecciona un colaborador primero', 'error'); return; }
+  const p = PROYECTOS.find(x => x.id === currentProjectId); if (!p) return;
+  const r = RESPUESTAS.find(x => x.id === respId); if (!r) return;
+  const escala = parseInt(p.escala) || 5;
+  const score  = r.score ?? calculateScore(r, p);
+  const clasif = r.clasif || applyCalibration(score, p)?.label || '—';
+  if (fmt === 'pdf')  exportIndividualPDF(r, p, escala, score, clasif);
+  else                exportIndividualWord(r, p, escala, score, clasif);
+}
+
+
 function exportAnalisis(fmt) {
   const p=PROYECTOS.find(x=>x.id===currentProjectId); if(!p) return;
   const resp=RESPUESTAS.filter(r=>r.proyectoId===currentProjectId);
@@ -3021,7 +3044,7 @@ function exportPDFProj(p, resp, isClima, items, escala) {
     doc.setTextColor(...C.dark); doc.setFontSize(isLand?13:11); doc.setFont('helvetica','bold');
     doc.text('INDICADORES CLAVE',mg,y); y+=isLand?10:9;
 
-    const kpis=[[resp.length+'','Respuestas',C.secondary],[avgScore+'%','Score promedio',[243,156,18]],[depts.length||'—','Departamentos',C.accent],['1–'+escala,'Escala',[39,174,96]]];
+    const kpis=[[String(resp.length),'Respuestas',C.secondary],[String(avgScore)+'%','Score promedio',[243,156,18]],[String(depts.length||0),'Departamentos',C.accent],['1–'+String(escala),'Escala',[39,174,96]]];
     const kW=(W-SIDE-mg*2-12)/4;
     kpis.forEach(([val,lbl,clr],i)=>{
       const kx=mg+i*(kW+4);
@@ -3209,109 +3232,313 @@ ${fichas}
 }
 
 // ── PPTX BRANDED (estilo Conformatic) ──
+// ══════════════════════════════════════════
+// PPTX PROFESIONAL — Clima (12 slides) + Desempeño (12 slides)
+// ══════════════════════════════════════════
 async function exportPPTXProj(p, resp, isClima, items, escala) {
   try {
-    const pres=new PptxGenJS();
-    pres.layout='LAYOUT_WIDE'; pres.title=p.nombre+' · IntraRHecursos';
-    const dimStats=getDimStats(items,resp,isClima,escala);
-    const scores=resp.map(r=>r.score??calculateScore(r,p));
-    const avgScore=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
-    const depts=[...new Set(resp.map(r=>r.dept||r.ev_dept).filter(Boolean))];
+    showToast('⏳ Generando PowerPoint…');
+    const pres = new PptxGenJS();
+    pres.layout = 'LAYOUT_WIDE';
+    pres.author = 'IntraRHecursos';
+    pres.title  = p.nombre + ' · IntraRHecursos';
 
-    const BLUE='1264A3', LBLUE='1AA7D8', PURPLE='7B4FA6';
-    const WHITE='FFFFFF', DARK='1E2A44', GRAY='F5F8FC', MUTED='7882A0';
-    const W=13.33, H=7.5, SIDE=1.55;
+    const empresa = p.empresa || 'Empresa';
+    const periodo = p.periodo || '';
+    const W = 13.33, H = 7.5, mg = 0.55;
 
-    function slide(bg) {
-      const s=pres.addSlide();
-      s.background={color:bg||WHITE};
-      s.addShape(pres.shapes.RECTANGLE,{x:W-SIDE,y:0,w:SIDE,h:H,fill:{color:BLUE}});
-      s.addText(p.empresa+' · IntraRHecursos',{x:.3,y:H-.36,w:W-SIDE-.5,h:.28,fontSize:6,color:MUTED,fontFace:'Arial'});
-      return s;
+    const dimStats = getDimStats(items, resp, isClima, escala);
+    const scores   = resp.map(r=>r.score??calculateScore(r,p));
+    const avgScoreN= scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length):0;
+    const avgScore = avgScoreN.toFixed(2);
+    const pct      = Math.round(avgScoreN / escala * 100);
+    const depts    = [...new Set(resp.map(r=>r.dept||r.ev_dept).filter(Boolean))];
+    const deptStats= depts.map(d=>{
+      const dd=resp.filter(r=>(r.dept||r.ev_dept)===d);
+      const sc=dd.map(r=>r.score??calculateScore(r,p));
+      return {dept:d, n:dd.length, avg:sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length):0};
+    }).sort((a,b)=>b.avg-a.avg);
+    const sorted   = [...dimStats].sort((a,b)=>b.pct-a.pct);
+    const topDims  = sorted.slice(0,3).map(d=>d.titulo);
+    const botDims  = sorted.slice(-3).reverse().map(d=>d.titulo);
+
+    const today = new Date().toLocaleDateString('es-DO',{year:'numeric',month:'long',day:'numeric'});
+
+    // ── Color helpers ──
+    const PC = { navy:'1E2A44', purple:'7B4FA6', blue:'1264A3', lblue:'1AA7D8',
+                 green:'27AE60', yellow:'F39C12', orange:'E67E22', red:'E74C3C',
+                 white:'FFFFFF', gray:'F5F8FC', lgray:'E8ECF2', muted:'7882A0', dark:'1E2A44' };
+
+    function pClr(pct) {
+      if(pct>=80) return PC.green; if(pct>=65) return PC.lblue;
+      if(pct>=45) return PC.yellow; return PC.red;
+    }
+    function pLabel(pct) {
+      if(!isClima){ if(pct>=90)return 'Sobresaliente'; if(pct>=75)return 'Supera expectativas'; if(pct>=55)return 'Cumple expectativas'; if(pct>=35)return 'Por debajo'; return 'Insuficiente'; }
+      if(pct>=85)return 'Clima Favorable'; if(pct>=70)return 'Clima Aceptable'; if(pct>=50)return 'Clima en Riesgo'; return 'Clima Crítico';
     }
 
-    // ── S1: PORTADA ──
-    const s1=slide(WHITE);
-    s1.addShape(pres.shapes.RECTANGLE,{x:0,y:H-1.3,w:W-SIDE,h:1.3,fill:{color:LBLUE}});
-    s1.addText(isClima?'CLIMA\nORGANIZACIONAL':'EVALUACIÓN DE\nDESEMPEÑO',
-      {x:.5,y:1.1,w:W-SIDE-1,h:3.2,fontSize:42,color:DARK,bold:true,fontFace:'Arial',valign:'middle'});
-    s1.addText(p.empresa.toUpperCase(),
-      {x:.5,y:4.5,w:W-SIDE-1,h:.65,fontSize:21,color:PURPLE,bold:true,fontFace:'Arial'});
-    s1.addText((p.periodo||today()).toUpperCase(),
-      {x:.5,y:5.2,w:W-SIDE-1,h:.5,fontSize:14,color:DARK,fontFace:'Arial'});
-    if(p.logo){try{s1.addImage({path:p.logo,x:.4,y:H-1.25,w:1.4,h:.9,sizing:{type:'contain'}});}catch(e){}}
-    s1.addText('intraRHecursos',{x:.4,y:H-.38,w:2.5,h:.3,fontSize:8,color:WHITE,fontFace:'Arial'});
+    // ── Slide templates ──
+    function darkSlide(title, sub) {
+      const s = pres.addSlide();
+      s.background = { color: PC.navy };
+      s.addShape(pres.ShapeType.rect, {x:0,y:0,w:0.22,h:H,fill:{color:PC.purple}});
+      s.addText(title, {x:0.5,y:2.5,w:W-1,h:1.3,fontSize:36,bold:true,color:PC.white,fontFace:'Calibri',align:'center'});
+      if(sub) s.addText(sub, {x:0.5,y:3.85,w:W-1,h:0.5,fontSize:13,color:'C4CAD8',fontFace:'Calibri',align:'center'});
+      s.addText('IntraRHecursos', {x:mg,y:H-0.38,w:3,h:0.3,fontSize:8,color:'6878A0',fontFace:'Calibri'});
+      s.addText(empresa, {x:W-4,y:H-0.38,w:3.5,h:0.3,fontSize:8,color:'6878A0',fontFace:'Calibri',align:'right'});
+      return s;
+    }
+    function lightSlide(title, subtitle) {
+      const s = pres.addSlide();
+      s.background = { color: PC.white };
+      s.addShape(pres.ShapeType.rect, {x:0,y:0,w:W,h:0.07,fill:{color:PC.purple}});
+      s.addText(title, {x:mg,y:0.22,w:W-mg*2,h:0.52,fontSize:22,bold:true,color:PC.navy,fontFace:'Calibri'});
+      if(subtitle) s.addText(subtitle, {x:mg,y:0.72,w:W-mg*2,h:0.3,fontSize:11,color:PC.muted,fontFace:'Calibri'});
+      s.addShape(pres.ShapeType.rect, {x:0,y:H-0.07,w:W,h:0.07,fill:{color:PC.lgray}});
+      s.addText(`IntraRHecursos  ·  ${empresa}  ·  ${periodo}`, {x:mg,y:H-0.38,w:8,h:0.28,fontSize:7.5,color:PC.muted,fontFace:'Calibri'});
+      return s;
+    }
+    function hBar(s, x, y, label, barPct, maxW, rowH) {
+      const clr = pClr(barPct);
+      s.addText(label.substring(0,30), {x,y,w:3.2,h:rowH,fontSize:9,color:PC.dark,fontFace:'Calibri',valign:'middle'});
+      s.addShape(pres.ShapeType.rect, {x:x+3.3,y:y+rowH*0.25,w:maxW,h:rowH*0.5,fill:{color:PC.lgray}});
+      if(barPct>0) s.addShape(pres.ShapeType.rect, {x:x+3.3,y:y+rowH*0.25,w:Math.max(maxW*barPct/100,0.05),h:rowH*0.5,fill:{color:clr}});
+      s.addText(String(barPct)+'%', {x:x+3.3+maxW+0.08,y,w:0.72,h:rowH,fontSize:9,bold:true,color:clr,fontFace:'Calibri',valign:'middle'});
+    }
 
-    // ── S2: TEMAS ──
-    const s2=pres.addSlide();
-    s2.background={color:BLUE};
-    s2.addShape(pres.shapes.RECTANGLE,{x:SIDE+.4,y:0,w:W-SIDE-.4,h:H,fill:{color:WHITE}});
-    s2.addText('INFORME DE\nRESULTADOS',{x:.15,y:.7,w:SIDE+.1,h:2.2,fontSize:14,color:WHITE,bold:true,fontFace:'Arial'});
-    s2.addText(isClima?'CLIMA\nORGANIZACIONAL':'EVALUACIÓN\nDESEMPEÑO',{x:.15,y:3.1,w:SIDE+.1,h:1.1,fontSize:10,color:LBLUE,fontFace:'Arial'});
-    s2.addShape(pres.shapes.RECTANGLE,{x:.15,y:4.4,w:1.1,h:.05,fill:{color:MUTED}});
-    s2.addText('TEMAS A ABORDAR',{x:.15,y:4.6,w:SIDE+.1,h:.5,fontSize:8,color:WHITE,bold:true,fontFace:'Arial'});
-    s2.addText('intraRHecursos',{x:.15,y:H-.45,w:SIDE+.1,h:.32,fontSize:7,color:'C4D0E0',fontFace:'Arial'});
-    s2.addText('Contenido del informe',{x:SIDE+.8,y:.5,w:W-SIDE-1.2,h:.5,fontSize:14,color:DARK,bold:true,fontFace:'Arial'});
-    const temas=isClima?['Datos generales','Cultura Organizacional','Liderazgo','Compensación y Beneficios','Bienestar','Ambiente Físico','Comentarios']:['Datos generales','Resultados por competencia','Evaluación de objetivos','Distribución de clasificaciones','Análisis por departamento','Recomendaciones'];
-    s2.addText(temas.map(t=>'  •  '+t).join('\n'),{x:SIDE+.8,y:1.2,w:W-SIDE-1.2,h:5.5,fontSize:11,color:DARK,fontFace:'Arial',lineSpacingMultiple:1.55});
+    // ════════ SLIDE 1 — PORTADA ════════
+    {
+      const s = pres.addSlide();
+      s.background = { color: PC.navy };
+      s.addShape(pres.ShapeType.rect, {x:0,y:0,w:0.22,h:H,fill:{color:PC.purple}});
+      const clr = pClr(pct);
+      s.addShape(pres.ShapeType.ellipse, {x:8.8,y:1.8,w:3.1,h:3.1,fill:{color:clr},line:{color:PC.white,width:3}});
+      s.addText(String(pct)+'%', {x:8.8,y:2.4,w:3.1,h:1.4,fontSize:48,bold:true,color:PC.white,fontFace:'Calibri',align:'center'});
+      s.addText('Índice General', {x:8.8,y:3.82,w:3.1,h:0.42,fontSize:11,color:'D0E8FF',fontFace:'Calibri',align:'center'});
+      s.addText(pLabel(pct), {x:8.8,y:4.24,w:3.1,h:0.38,fontSize:11,bold:true,color:PC.white,fontFace:'Calibri',align:'center'});
+      s.addText('INFORME DE', {x:0.6,y:1.6,w:7.5,h:0.5,fontSize:15,color:'9BB5D8',fontFace:'Calibri'});
+      s.addText(isClima?'CLIMA ORGANIZACIONAL':'EVALUACIÓN DE DESEMPEÑO', {x:0.6,y:2.1,w:7.5,h:1.1,fontSize:32,bold:true,color:PC.white,fontFace:'Calibri'});
+      s.addText(empresa, {x:0.6,y:3.25,w:7.5,h:0.62,fontSize:21,color:'A3C4E8',fontFace:'Calibri'});
+      s.addText(periodo, {x:0.6,y:3.9,w:7.5,h:0.4,fontSize:13,color:'7898BC',fontFace:'Calibri'});
+      s.addText(String(resp.length)+' participantes  ·  '+String(items.length)+' '+(isClima?'dimensiones':'competencias')+'  ·  Escala 1–'+String(escala), {x:0.6,y:4.5,w:7.5,h:0.35,fontSize:11,color:'7898BC',fontFace:'Calibri'});
+      s.addShape(pres.ShapeType.rect, {x:0,y:H-0.55,w:W,h:0.55,fill:{color:'162138'}});
+      s.addText('intraRHecursos  ·  Tu gente es la clave', {x:0.6,y:H-0.48,w:8,h:0.38,fontSize:9,color:'6878A0',fontFace:'Calibri'});
+      s.addText(today, {x:W-3.5,y:H-0.48,w:3,h:0.38,fontSize:9,color:'6878A0',fontFace:'Calibri',align:'right'});
+    }
 
-    // ── S3: KPIs ──
-    const s3=slide(GRAY);
-    s3.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:W-SIDE,h:.62,fill:{color:BLUE}});
-    s3.addText('INDICADORES CLAVE',{x:.4,y:.1,w:W-SIDE-.6,h:.42,fontSize:17,color:WHITE,bold:true,fontFace:'Arial'});
-    const kData=[[String(resp.length),'Respuestas',BLUE],[avgScore+'%','Score promedio','F39C12'],[String(depts.length||'—'),'Departamentos',LBLUE],['1–'+escala,'Escala','27AE60']];
-    kData.forEach(([val,lbl,clr],i)=>{
-      const kx=.3+i*3.12;
-      s3.addShape(pres.shapes.RECTANGLE,{x:kx,y:.82,w:2.9,h:2.55,fill:{color:WHITE}});
-      s3.addShape(pres.shapes.RECTANGLE,{x:kx,y:.82,w:2.9,h:.17,fill:{color:clr}});
-      s3.addText(val,{x:kx,y:1.55,w:2.9,h:.85,fontSize:26,color:clr,bold:true,align:'center',fontFace:'Arial'});
-      s3.addText(lbl,{x:kx,y:2.6,w:2.9,h:.42,fontSize:9,color:MUTED,align:'center',fontFace:'Arial'});
-    });
-
-    // ── S4: DIMENSIONES ──
-    const s4=slide(GRAY);
-    s4.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:W-SIDE,h:.62,fill:{color:BLUE}});
-    s4.addText(isClima?'RESULTADOS POR DIMENSIÓN':'RESULTADOS POR COMPETENCIA',
-      {x:.4,y:.1,w:W-SIDE-.6,h:.42,fontSize:17,color:WHITE,bold:true,fontFace:'Arial'});
-    const bXs=3.7, bXe=W-SIDE-.3, bTW=bXe-bXs;
-    dimStats.slice(0,11).forEach((d,i)=>{
-      const by=.82+i*.58, clrH=scoreColorHex(d.pct);
-      s4.addText(d.titulo.substring(0,26),{x:.35,y:by,w:3.2,h:.48,fontSize:8.5,color:DARK,fontFace:'Arial',valign:'middle'});
-      s4.addShape(pres.shapes.RECTANGLE,{x:bXs,y:by+.1,w:bTW,h:.27,fill:{color:'DDE3ED'}});
-      s4.addShape(pres.shapes.RECTANGLE,{x:bXs,y:by+.1,w:Math.max(bTW*d.pct/100,.04),h:.27,fill:{color:clrH}});
-      s4.addText(d.avg.toFixed(1)+'/'+escala+' ('+d.pct+'%)',{x:bXe+.05,y:by,w:1.35,h:.48,fontSize:7.5,color:clrH,bold:true,fontFace:'Arial',valign:'middle'});
-    });
-
-    // ── S5: POR DEPARTAMENTO ──
-    if(depts.length>0){
-      const s5=slide(GRAY);
-      s5.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:W-SIDE,h:.62,fill:{color:BLUE}});
-      s5.addText('ANÁLISIS POR DEPARTAMENTO',{x:.4,y:.1,w:W-SIDE-.6,h:.42,fontSize:17,color:WHITE,bold:true,fontFace:'Arial'});
-      const deptStats=depts.map(dept=>{
-        const dd=resp.filter(r=>(r.dept||r.ev_dept)===dept);
-        const sc=dd.map(r=>r.score??calculateScore(r,p));
-        return {dept,n:dd.length,avg:sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length):0};
-      }).sort((a,b)=>b.avg-a.avg);
-      deptStats.slice(0,9).forEach((d,i)=>{
-        const by=.82+i*.64, clrH=scoreColorHex(Math.round(d.avg));
-        s5.addText(d.dept.substring(0,22),{x:.35,y:by,w:3.2,h:.52,fontSize:9,color:DARK,fontFace:'Arial',valign:'middle'});
-        s5.addShape(pres.shapes.RECTANGLE,{x:bXs,y:by+.12,w:bTW,h:.28,fill:{color:'DDE3ED'}});
-        s5.addShape(pres.shapes.RECTANGLE,{x:bXs,y:by+.12,w:Math.max(bTW*d.avg/100,.04),h:.28,fill:{color:clrH}});
-        s5.addText(d.avg.toFixed(1)+'%',{x:bXe+.05,y:by,w:1.2,h:.52,fontSize:8,color:clrH,bold:true,fontFace:'Arial',valign:'middle'});
+    // ════════ SLIDE 2 — OBJETIVO ════════
+    {
+      const s = lightSlide('Objetivo del estudio', 'Propósito y alcance del '+(isClima?'diagnóstico de clima organizacional':'proceso de evaluación de desempeño'));
+      const objectives = isClima
+        ? [['🎯','Identificar niveles de clima organizacional por dimensión y área'],
+           ['📊','Detectar brechas y factores críticos que afectan el ambiente laboral'],
+           ['💡','Analizar tendencias de comportamiento y satisfacción del colaborador'],
+           ['🚀','Definir oportunidades de mejora y acciones estratégicas concretas']]
+        : [['🎯','Evaluar el nivel de desempeño individual y organizacional'],
+           ['📊','Identificar brechas de competencias y áreas de desarrollo'],
+           ['💡','Analizar tendencias de comportamiento y resultados por colaborador'],
+           ['🚀','Definir planes de acción para fortalecer el capital humano']];
+      objectives.forEach(([icon, text], i) => {
+        const y = 1.2 + i * 1.35;
+        s.addShape(pres.ShapeType.ellipse, {x:mg,y,w:0.6,h:0.6,fill:{color:PC.purple}});
+        s.addText(icon, {x:mg,y,w:0.6,h:0.6,fontSize:18,align:'center',valign:'middle'});
+        s.addText(text, {x:mg+0.75,y:y+0.05,w:W-mg*2-0.75,h:0.5,fontSize:13,color:PC.dark,fontFace:'Calibri',valign:'middle'});
       });
     }
 
-    // ── S6: CIERRE ──
-    const s6=slide(WHITE);
-    s6.addShape(pres.shapes.RECTANGLE,{x:0,y:H-1.4,w:W-SIDE,h:1.4,fill:{color:LBLUE}});
-    s6.addText('Gracias por\ntu confianza.',{x:.5,y:1.4,w:W-SIDE-1,h:3.2,fontSize:36,color:DARK,bold:true,fontFace:'Arial'});
-    s6.addText('intraRHecursos · Tu gente es la clave.',{x:.5,y:H-1.3,w:W-SIDE-1,h:.5,fontSize:12,color:WHITE,fontFace:'Arial'});
-    s6.addText('IntraRHecursos.com',{x:.5,y:H-.72,w:W-SIDE-1,h:.32,fontSize:9,color:'D0E8F5',fontFace:'Arial'});
+    // ════════ SLIDE 3 — METODOLOGÍA ════════
+    {
+      const s = lightSlide('Metodología', 'Instrumento, población y proceso de recolección');
+      const cols = [
+        {title:'Población', icon:'👥', items:[String(resp.length)+' participantes', String(depts.length)+' departamentos','Colaboradores activos']},
+        {title:'Instrumento', icon:'📋', items:['Encuesta digital','Escala 1–'+String(escala)+' puntos',String(items.length)+' '+(isClima?'dimensiones':'competencias')]},
+        {title:isClima?'Dimensiones':'Competencias', icon:'🔬', items: items.slice(0,4).map(d=>d.titulo)},
+        {title:'Recolección', icon:'📅', items:['Período: '+periodo,'Modalidad: Digital','Confidencial y anónimo']},
+      ];
+      cols.forEach((col, i) => {
+        const x = mg + i * 3.05;
+        s.addShape(pres.ShapeType.roundRect, {x,y:1.1,w:2.85,h:5.5,fill:{color:PC.gray},rectRadius:0.08});
+        s.addShape(pres.ShapeType.ellipse, {x:x+1.0,y:1.0,w:0.85,h:0.85,fill:{color:PC.purple}});
+        s.addText(col.icon, {x:x+1.0,y:1.0,w:0.85,h:0.85,fontSize:20,align:'center',valign:'middle'});
+        s.addText(col.title, {x,y:1.95,w:2.85,h:0.4,fontSize:12,bold:true,color:PC.navy,fontFace:'Calibri',align:'center'});
+        col.items.forEach((item, j) => {
+          s.addText('• '+item, {x:x+0.15,y:2.55+j*0.58,w:2.55,h:0.5,fontSize:10,color:PC.dark,fontFace:'Calibri'});
+        });
+      });
+    }
 
-    await pres.writeFile({fileName:'IntraRH_'+p.empresa.replace(/\s+/g,'_')+'_'+today()+'.pptx'});
-    showToast('✅ PowerPoint exportado','success');
-  }catch(e){showToast('Error PPTX: '+e.message,'error');console.error(e);}
+    // ════════ SLIDE 4 — ÍNDICE GENERAL (Semáforo) ════════
+    {
+      const s = lightSlide(isClima?'Índice General de Clima':'Índice General de Desempeño', 'Resultado consolidado · '+String(resp.length)+' respuestas · Escala 1–'+String(escala));
+      const clr = pClr(pct);
+      s.addShape(pres.ShapeType.roundRect, {x:mg,y:1.1,w:3.8,h:5.5,fill:{color:clr},rectRadius:0.1});
+      s.addText(String(pct)+'%', {x:mg,y:2.0,w:3.8,h:1.8,fontSize:72,bold:true,color:PC.white,fontFace:'Calibri',align:'center'});
+      s.addText(pLabel(pct), {x:mg,y:3.82,w:3.8,h:0.55,fontSize:16,bold:true,color:PC.white,fontFace:'Calibri',align:'center'});
+      s.addText(avgScore+' / '+String(escala), {x:mg,y:4.42,w:3.8,h:0.4,fontSize:13,color:'D0FFD0',fontFace:'Calibri',align:'center'});
+      s.addText(String(resp.length)+' respuestas', {x:mg,y:4.95,w:3.8,h:0.35,fontSize:11,color:'D0FFD0',fontFace:'Calibri',align:'center'});
+      const levels = isClima
+        ? [{label:'Clima Favorable',range:'85–100%',clr:PC.green,active:pct>=85},{label:'Clima Aceptable',range:'70–84%',clr:PC.lblue,active:pct>=70&&pct<85},{label:'Clima en Riesgo',range:'50–69%',clr:PC.yellow,active:pct>=50&&pct<70},{label:'Clima Crítico',range:'0–49%',clr:PC.red,active:pct<50}]
+        : [{label:'Sobresaliente',range:'90–100%',clr:PC.green,active:pct>=90},{label:'Supera expectativas',range:'75–89%',clr:PC.lblue,active:pct>=75&&pct<90},{label:'Cumple expectativas',range:'55–74%',clr:PC.yellow,active:pct>=55&&pct<75},{label:'Por debajo / Insuficiente',range:'0–54%',clr:PC.red,active:pct<55}];
+      levels.forEach((lv, i) => {
+        const y = 1.1 + i * 1.38;
+        const bg = lv.active ? lv.clr : PC.lgray;
+        const tc = lv.active ? PC.white : PC.muted;
+        s.addShape(pres.ShapeType.roundRect, {x:5.0,y,w:7.6,h:1.2,fill:{color:bg},rectRadius:0.07});
+        s.addShape(pres.ShapeType.ellipse, {x:5.1,y:y+0.28,w:0.65,h:0.65,fill:{color:lv.active?'3D5480':'CCCCCC'}});
+        s.addText(lv.active?'●':'○', {x:5.1,y:y+0.28,w:0.65,h:0.65,fontSize:16,color:lv.active?PC.white:'AAAAAA',align:'center',valign:'middle'});
+        s.addText(lv.label, {x:5.9,y:y+0.1,w:4.5,h:0.5,fontSize:13,bold:lv.active,color:tc,fontFace:'Calibri'});
+        s.addText(lv.range, {x:5.9,y:y+0.6,w:4.5,h:0.35,fontSize:10,color:lv.active?'E0FFE0':PC.muted,fontFace:'Calibri'});
+      });
+    }
+
+    // ════════ SLIDE 5 — PRINCIPALES INSIGHTS ════════
+    {
+      const s = darkSlide('Principales Hallazgos', empresa+' · Análisis '+(isClima?'de clima organizacional':'de desempeño'));
+      const sortedD = [...dimStats].sort((a,b)=>b.pct-a.pct);
+      const top2 = sortedD.slice(0,2); const bot2 = sortedD.slice(-2);
+      const clasifs = (p.calibracion?.clasificaciones||[{label:'Sobresaliente',min:90},{label:'Supera expectativas',min:75},{label:'Cumple expectativas',min:55}]);
+      const topClasif = clasifs[0]?.label;
+      const topCount = resp.filter(r=>r.clasif===topClasif).length;
+      const insights = [
+        '✅ Fortaleza principal: '+(top2[0]?.titulo||'—')+' con '+String(top2[0]?.pct||0)+'% de puntuación',
+        '✅ Segunda fortaleza: '+(top2[1]?.titulo||'—')+' con '+String(top2[1]?.pct||0)+'%',
+        '⚠️ Área crítica: '+(bot2[0]?.titulo||'—')+' requiere atención ('+String(bot2[0]?.pct||0)+'%)',
+        '⚠️ Brecha detectada: '+(bot2[1]?.titulo||'—')+' con '+String(bot2[1]?.pct||0)+'% de puntuación',
+        '📊 Índice general '+String(pct)+'% — '+pLabel(pct)+' · '+String(resp.length)+' evaluados',
+      ];
+      insights.forEach((txt, i) => {
+        const y = 1.0 + i * 1.08;
+        s.addShape(pres.ShapeType.roundRect, {x:mg,y,w:W-mg*2,h:0.88,fill:{color:'253355'},rectRadius:0.06});
+        s.addText(txt, {x:mg+0.2,y:y+0.1,w:W-mg*2-0.4,h:0.68,fontSize:13,color:PC.white,fontFace:'Calibri',valign:'middle'});
+      });
+    }
+
+    // ════════ SLIDE 6 — RESULTADOS POR DIMENSIÓN/COMPETENCIA ════════
+    {
+      const s = lightSlide('Resultados por '+(isClima?'Dimensión':'Competencia'), 'Puntuación promedio por '+(isClima?'dimensión':'competencia')+' evaluada');
+      const bMax = 7.2, startY = 1.1;
+      const rowH = Math.min(0.58, (H-startY-0.6)/Math.max(dimStats.length,1));
+      dimStats.forEach((d, i) => hBar(s, mg, startY+i*rowH, d.titulo, d.pct, bMax, rowH));
+    }
+
+    // ════════ SLIDE 7 — SEMÁFORO / DISTRIBUCIÓN ════════
+    {
+      const s = lightSlide('Semáforo de '+(isClima?'Dimensiones':'Competencias'), 'Clasificación por nivel de desempeño');
+      const categories = [
+        {label:'Fortalezas (≥80%)',   items:dimStats.filter(d=>d.pct>=80), clr:PC.green,  bg:'E8F8EE'},
+        {label:'Consolidación (65–79%)', items:dimStats.filter(d=>d.pct>=65&&d.pct<80), clr:PC.lblue, bg:'E3F2FD'},
+        {label:'En riesgo (50–64%)', items:dimStats.filter(d=>d.pct>=50&&d.pct<65), clr:PC.yellow, bg:'FFF8E1'},
+        {label:'Crítico (<50%)',       items:dimStats.filter(d=>d.pct<50),  clr:PC.red,   bg:'FDECEA'},
+      ];
+      categories.forEach((cat, i) => {
+        const x = mg + i * 3.05;
+        s.addShape(pres.ShapeType.roundRect, {x,y:1.1,w:2.85,h:5.5,fill:{color:cat.bg},rectRadius:0.08});
+        s.addShape(pres.ShapeType.rect, {x,y:1.1,w:2.85,h:0.08,fill:{color:cat.clr}});
+        s.addText(cat.label, {x,y:1.25,w:2.85,h:0.5,fontSize:9.5,bold:true,color:cat.clr,fontFace:'Calibri',align:'center'});
+        if(!cat.items.length) s.addText('—', {x,y:2.1,w:2.85,h:0.4,fontSize:12,color:PC.muted,fontFace:'Calibri',align:'center'});
+        cat.items.slice(0,6).forEach((d, j) => {
+          s.addShape(pres.ShapeType.roundRect, {x:x+0.12,y:2.0+j*0.75,w:2.61,h:0.6,fill:{color:PC.white},rectRadius:0.04});
+          s.addText(d.titulo.substring(0,22), {x:x+0.18,y:2.02+j*0.75,w:2.0,h:0.56,fontSize:9,color:PC.dark,fontFace:'Calibri',valign:'middle'});
+          s.addText(String(d.pct)+'%', {x:x+2.18,y:2.02+j*0.75,w:0.5,h:0.56,fontSize:9,bold:true,color:cat.clr,fontFace:'Calibri',align:'right',valign:'middle'});
+        });
+      });
+    }
+
+    // ════════ SLIDE 8 — ANÁLISIS POR DEPARTAMENTO ════════
+    {
+      const s = lightSlide('Análisis por Departamento', 'Comparación de índice por área organizacional');
+      if(!deptStats.length) {
+        s.addText('No hay datos segmentados por departamento.', {x:mg,y:3,w:W-mg*2,h:0.5,fontSize:14,color:PC.muted,fontFace:'Calibri',align:'center'});
+      } else {
+        const bMax = 8.5, rH = Math.min(0.62, (H-1.5)/Math.max(deptStats.length,1));
+        deptStats.forEach((d, i) => hBar(s, mg, 1.2+i*rH, d.dept, Math.round(d.avg), bMax, rH));
+      }
+    }
+
+    // ════════ SLIDE 9 — HALLAZGOS CLAVE ════════
+    {
+      const s = lightSlide('Hallazgos Clave', 'Factores impulsores y de riesgo identificados');
+      const sortedD = [...dimStats].sort((a,b)=>b.pct-a.pct);
+      const half = Math.ceil(sortedD.length/2);
+      s.addShape(pres.ShapeType.roundRect, {x:mg,y:1.05,w:5.8,h:5.6,fill:{color:'E8F8EE'},rectRadius:0.08});
+      s.addText('🟢 Factores impulsores', {x:mg+0.15,y:1.15,w:5.5,h:0.42,fontSize:12,bold:true,color:PC.green,fontFace:'Calibri'});
+      sortedD.slice(0,half).forEach((d,i) => {
+        s.addText('• '+d.titulo+': '+String(d.pct)+'%', {x:mg+0.2,y:1.72+i*0.62,w:5.4,h:0.52,fontSize:10.5,color:PC.dark,fontFace:'Calibri'});
+      });
+      s.addShape(pres.ShapeType.roundRect, {x:6.75,y:1.05,w:6.0,h:5.6,fill:{color:'FDECEA'},rectRadius:0.08});
+      s.addText('🔴 Factores de riesgo', {x:6.9,y:1.15,w:5.7,h:0.42,fontSize:12,bold:true,color:PC.red,fontFace:'Calibri'});
+      sortedD.slice(half).forEach((d,i) => {
+        s.addText('• '+d.titulo+': '+String(d.pct)+'%', {x:6.9,y:1.72+i*0.62,w:5.7,h:0.52,fontSize:10.5,color:PC.dark,fontFace:'Calibri'});
+      });
+    }
+
+    // ════════ SLIDE 10 — RECOMENDACIONES ESTRATÉGICAS ════════
+    {
+      const s = lightSlide('Recomendaciones Estratégicas', 'Acciones sugeridas por área de oportunidad');
+      const bot = [...dimStats].sort((a,b)=>a.pct-b.pct).slice(0,3);
+      const recs = [
+        ...bot.map(d => ({icon:'🎯',priority:'Alta',title:d.titulo,action:'Diseñar plan de intervención focalizado en '+d.titulo.toLowerCase()+'. Implementar talleres, retroalimentación y seguimiento mensual.',clr:PC.red})),
+        {icon:'📈',priority:'Media',title:'Comunicación y reconocimiento',action:'Fortalecer canales formales e informales. Establecer reuniones periódicas y programa de reconocimiento.',clr:PC.yellow},
+      ].slice(0,4);
+      recs.forEach((r, i) => {
+        const y = 1.1 + i * 1.52;
+        s.addShape(pres.ShapeType.roundRect, {x:mg,y,w:W-mg*2,h:1.32,fill:{color:PC.gray},rectRadius:0.07});
+        s.addShape(pres.ShapeType.ellipse, {x:mg+0.1,y:y+0.3,w:0.72,h:0.72,fill:{color:r.clr}});
+        s.addText(r.icon, {x:mg+0.1,y:y+0.3,w:0.72,h:0.72,fontSize:20,align:'center',valign:'middle'});
+        s.addText(r.title+'  ·  Prioridad: '+r.priority, {x:mg+0.95,y:y+0.1,w:W-mg*2-1.1,h:0.38,fontSize:11,bold:true,color:PC.navy,fontFace:'Calibri'});
+        s.addText(r.action, {x:mg+0.95,y:y+0.5,w:W-mg*2-1.1,h:0.7,fontSize:10,color:PC.muted,fontFace:'Calibri'});
+      });
+    }
+
+    // ════════ SLIDE 11 — PLAN DE ACCIÓN ════════
+    {
+      const s = lightSlide('Plan de Acción Recomendado', 'Hallazgos priorizados con acciones e impacto');
+      const headers = ['Hallazgo','Acción','Prioridad','Impacto','Responsable'];
+      const cw = [2.8,4.0,1.2,1.5,2.3];
+      let x = mg;
+      headers.forEach((h, i) => {
+        s.addShape(pres.ShapeType.rect, {x,y:1.1,w:cw[i],h:0.42,fill:{color:PC.navy}});
+        s.addText(h, {x:x+0.05,y:1.1,w:cw[i]-0.1,h:0.42,fontSize:9,bold:true,color:PC.white,fontFace:'Calibri',valign:'middle'});
+        x += cw[i];
+      });
+      const bot4 = [...dimStats].sort((a,b)=>a.pct-b.pct).slice(0,4);
+      bot4.forEach((d, ri) => {
+        let x = mg;
+        const bg = ri%2===0 ? PC.white : PC.gray;
+        const priority = d.pct<50?'Alta':d.pct<65?'Media':'Baja';
+        const row = [d.titulo.substring(0,26),'Plan de mejora en '+d.titulo.substring(0,18).toLowerCase(),priority,d.pct<50?'Alto':'Medio','Gestión Humana'];
+        row.forEach((cell, ci) => {
+          s.addShape(pres.ShapeType.rect, {x,y:1.52+ri*0.78,w:cw[ci],h:0.72,fill:{color:bg}});
+          const tc = ci===2?(cell==='Alta'?PC.red:cell==='Media'?PC.yellow:PC.green):PC.dark;
+          s.addText(String(cell), {x:x+0.07,y:1.52+ri*0.78,w:cw[ci]-0.1,h:0.72,fontSize:8.5,color:tc,bold:ci===2,fontFace:'Calibri',valign:'middle'});
+          x += cw[ci];
+        });
+      });
+    }
+
+    // ════════ SLIDE 12 — CIERRE EJECUTIVO ════════
+    {
+      const s = darkSlide((isClima?'Clima Organizacional: ':'Desempeño: ')+pLabel(pct), empresa+' · '+periodo);
+      const bullets = [
+        '📊 Índice general: '+String(pct)+'% ('+avgScore+'/'+String(escala)+')',
+        '✅ Mayor fortaleza: '+(topDims[0]||'—'),
+        '⚠️ Principal oportunidad: '+(botDims[0]||'—'),
+        '👥 '+String(resp.length)+' participantes evaluados · '+String(depts.length)+' departamentos',
+      ];
+      bullets.forEach((b, i) => {
+        s.addShape(pres.ShapeType.roundRect, {x:3.0,y:1.6+i*1.15,w:7.5,h:0.82,fill:{color:'253355'},rectRadius:0.06});
+        s.addText(b, {x:3.2,y:1.65+i*1.15,w:7.1,h:0.72,fontSize:13,color:PC.white,fontFace:'Calibri',valign:'middle'});
+      });
+      s.addText('intraRHecursos  ·  Tu gente es la clave', {x:mg,y:H-0.8,w:8,h:0.35,fontSize:10,color:'6878A0',fontFace:'Calibri'});
+    }
+
+    const filename = 'IntraRH_'+empresa.replace(/\s+/g,'_')+'_'+today.replace(/\s+/g,'_').replace(/,/g,'')+'.pptx';
+    await pres.writeFile({ fileName: filename });
+    showToast('✅ PowerPoint generado (12 slides)','success');
+  } catch(e) { showToast('Error PPTX: '+e.message,'error'); console.error(e); }
 }
+
 
 // ── INFORMES INDIVIDUALES ──
 function exportIndividualPDF(r, p, escala, score, clasif) {
@@ -3336,8 +3563,8 @@ function exportIndividualPDF(r, p, escala, score, clasif) {
     doc.setFillColor(...C.light); doc.roundedRect(mg,130,W-SIDE-mg*2,22,3,3,'F');
     doc.setFillColor(...scoreColor(score)); doc.roundedRect(mg,130,W-SIDE-mg*2,2,1,1,'F');
     doc.setFontSize(20); doc.setFont('helvetica','bold'); doc.setTextColor(...scoreColor(score));
-    doc.text(score+'%',mg+8,145);
-    doc.setFontSize(11); doc.setTextColor(...C.dark); doc.text(clasif,mg+35,145);
+    doc.text(String(score)+'%',mg+8,145);
+    doc.setFontSize(11); doc.setTextColor(...C.dark); doc.text(String(clasif),mg+35,145);
     // Dimensiones
     let y=162;
     doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(...C.dark);
@@ -4344,6 +4571,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 
+
+// ── jsPDF safety patch: auto-convert any numeric first arg to String ──
+(function(){
+  function patchPDF(){
+    if(!window.jspdf){setTimeout(patchPDF,300);return;}
+    try{
+      const proto=window.jspdf.jsPDF.prototype;
+      const orig=proto.text;
+      proto.text=function(text,x,y,opts,tr){
+        if(typeof text==='number') text=String(text);
+        else if(Array.isArray(text)) text=text.map(t=>typeof t==='number'?String(t):t);
+        return orig.call(this,text,x,y,opts,tr);
+      };
+    }catch(e){}
+  }
+  patchPDF();
+})();
 
 // ── EMAIL TEST ──
 async function probarEmail() {
