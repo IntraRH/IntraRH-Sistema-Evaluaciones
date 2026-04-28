@@ -2918,17 +2918,24 @@ async function detectarModoParticipante() {
   if (!token && !proyId) return false;
 
   try {
-    const [linksRes, proyRes, cfgRes, partRes] = await Promise.all([
-      _supa.from('irh_links_store').select('*').limit(1),
-      _supa.from('irh_proyectos').select('*'),
-      _supa.from('irh_config').select('*').limit(1),
-      token ? _supa.from('irh_participantes').select('*') : Promise.resolve({data:[]})
-    ]);
+    const linksRes = await _supa.from('irh_links_store').select('*').limit(1);
     if (linksRes.data?.length && linksRes.data[0].links_json) LINKS = linksRes.data[0].links_json;
+  } catch(e) { console.warn('links load error:', e.message); }
+
+  try {
+    const proyRes = await _supa.from('irh_proyectos').select('*');
     if (proyRes.data?.length) PROYECTOS = proyRes.data.map(r=>({...r.data_json,_supaid:r.id}));
+  } catch(e) { console.warn('proyectos load error:', e.message); }
+
+  try {
+    const cfgRes = await _supa.from('irh_config').select('*').limit(1);
     if (cfgRes.data?.length && cfgRes.data[0].config_json) CFG = {...CFG,...cfgRes.data[0].config_json};
+  } catch(e) { console.warn('config load error:', e.message); }
+
+  try {
+    const partRes = await _supa.from('irh_participantes').select('*');
     if (partRes.data?.length) PARTICIPANTES = partRes.data.map(r=>({...r.data_json,_supaid:r.id}));
-  } catch(e) { console.warn('participant load:', e); }
+  } catch(e) { console.warn('participantes load error:', e.message); }
 
   // Token individual de participante
   if (token && !proyId) {
