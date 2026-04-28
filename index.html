@@ -1722,16 +1722,27 @@ function renderProjItemsHTML(projId, items, tipo) {
             </select>
             <button style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;" onclick="_rmPreg('${projId}','${tipo}',${di},${pi})" title="Eliminar">✕</button>
           </div>
-          ${['multiple','checkbox','desplegable'].includes(pTipo) ? `
-          <div style="margin:4px 0 4px 18px;padding:6px 10px;background:var(--bg);border-radius:6px;">
-            ${(p2.opciones||['Opción 1']).map((op,oi)=>`
-              <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
-                <span style="font-size:.7rem;color:var(--muted);">${pTipo==='checkbox'?'☐':pTipo==='multiple'?'○':'◉'}</span>
-                <input value="${(op||'').replace(/"/g,'&quot;')}" style="flex:1;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-family:'Nunito',sans-serif;font-size:.74rem;outline:none;" oninput="_setOpt('${tipo}',${di},${pi},${oi},this.value)">
-                <button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;" onclick="_rmOpt('${projId}','${tipo}',${di},${pi},${oi})">✕</button>
+          ${['multiple','checkbox','desplegable'].includes(pTipo) ? (() => {
+            const ops = (p2.opciones && p2.opciones.length >= 2) ? p2.opciones : (p2.opciones && p2.opciones.length === 1 ? [...p2.opciones, 'Opción 2'] : ['Opción 1','Opción 2']);
+            const icon = pTipo==='checkbox'?'☐':pTipo==='multiple'?'○':'▾';
+            const atMax = ops.length >= 10;
+            const atMin = ops.length <= 2;
+            return `
+          <div style="margin:4px 0 8px 24px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
+            <div style="font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;">Opciones (${ops.length}/10) — mín. 2</div>
+            ${ops.map((op,oi)=>`
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;">
+                <span style="font-size:.62rem;font-weight:800;color:var(--muted);min-width:14px;text-align:right;">${oi+1}</span>
+                <span style="font-size:.75rem;color:var(--muted);flex-shrink:0;">${icon}</span>
+                <input value="${(op||'').replace(/"/g,'&quot;').replace(/'/g,"&#39;")}"
+                  style="flex:1;padding:4px 7px;border:1.5px solid var(--border);border-radius:5px;font-family:'Nunito',sans-serif;font-size:.76rem;outline:none;"
+                  oninput="_setOpt('${tipo}',${di},${pi},${oi},this.value)"
+                  placeholder="Opción ${oi+1}">
+                <button style="background:none;border:none;cursor:${atMin?'not-allowed':'pointer'};color:${atMin?'var(--border)':'var(--red)'};font-size:.8rem;padding:2px 4px;" ${atMin?'disabled':''} onclick="_rmOpt('${projId}','${tipo}',${di},${pi},${oi})">✕</button>
               </div>`).join('')}
-            <button style="background:none;border:none;cursor:pointer;color:var(--purple);font-size:.72rem;font-weight:700;padding:2px 0;" onclick="_addOpt('${projId}','${tipo}',${di},${pi})">+ Agregar opción</button>
-          </div>` : ''}
+            <button style="background:none;border:none;cursor:${atMax?'not-allowed':'pointer'};color:${atMax?'var(--muted)':'var(--purple)'};font-size:.72rem;font-weight:800;padding:3px 0;" ${atMax?'disabled':''} onclick="_addOpt('${projId}','${tipo}',${di},${pi})">+ Agregar opción${atMax?' (máx. 10)':''}</button>
+          </div>`;
+          })() : ''}
           ${pTipo==='lineal' ? `
           <div style="margin:4px 0 4px 18px;display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--muted);">
             <span>Mín:</span><input type="number" value="${p2.linMin||1}" min="0" max="10" style="width:46px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:.72rem;" oninput="_setLineal('${tipo}',${di},${pi},'linMin',this.value)">
@@ -1753,25 +1764,36 @@ function _setTT(tipo,di,pi,val){
   const c=a[di].preguntas[pi];
   const t=typeof c==='object'?(c.texto||''):(c||'');
   const needsOpts=['multiple','checkbox','desplegable'];
-  const opts=needsOpts.includes(val)?(c.opciones||['Opción 1','Opción 2']):undefined;
+  let opts=undefined;
+  if(needsOpts.includes(val)){
+    const existing=c.opciones||[];
+    opts=existing.length>=2?existing:['Opción 1','Opción 2'];
+  }
   const linMin=val==='lineal'?(c.linMin||1):undefined;
   const linMax=val==='lineal'?(c.linMax||5):undefined;
   a[di].preguntas[pi]={texto:t,tipo:val,...(opts?{opciones:opts}:{}),...(linMin!==undefined?{linMin,linMax}:{})};
   document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(currentProjectId,a,tipo);
 }
 function _setLineal(tipo,di,pi,field,val){const a=tipo==='dim'?_editDims:_editComps;a[di].preguntas[pi][field]=parseInt(val)||1;}
-function _addOpt(tipo,di,pi){
-  a[di].preguntas[pi].opciones=a[di].preguntas[pi].opciones||[];
-  a[di].preguntas[pi].opciones.push('Nueva opción');
-  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(currentProjectId,a,tipo);
-}
-function _rmOpt(tipo,di,pi,oi){
+function _addOpt(projId,tipo,di,pi){
   const a=tipo==='dim'?_editDims:_editComps;
-  a[di].preguntas[pi].opciones.splice(oi,1);
-  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(currentProjectId,a,tipo);
+  if(!a[di]||!a[di].preguntas[pi])return;
+  const ops=a[di].preguntas[pi].opciones=a[di].preguntas[pi].opciones||['Opción 1','Opción 2'];
+  if(ops.length>=10){showToast('Máximo 10 opciones por pregunta','error');return;}
+  ops.push('Opción '+(ops.length+1));
+  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);
+}
+function _rmOpt(projId,tipo,di,pi,oi){
+  const a=tipo==='dim'?_editDims:_editComps;
+  if(!a[di]||!a[di].preguntas[pi])return;
+  const ops=a[di].preguntas[pi].opciones||[];
+  if(ops.length<=2){showToast('Mínimo 2 opciones requeridas','error');return;}
+  ops.splice(oi,1);
+  document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);
 }
 function _setOpt(tipo,di,pi,oi,val){
   const a=tipo==='dim'?_editDims:_editComps;
+  if(!a[di]||!a[di].preguntas[pi]||!a[di].preguntas[pi].opciones)return;
   a[di].preguntas[pi].opciones[oi]=val;
 }
 function _addPreg(projId,tipo,di){const a=tipo==='dim'?_editDims:_editComps;a[di].preguntas.push({texto:'Nueva pregunta',tipo:'escala'});document.getElementById('proj-items-cont').innerHTML=renderProjItemsHTML(projId,a,tipo);}
@@ -2493,19 +2515,6 @@ function renderTabAnalisis(p, resp, escala) {
   </div>
 
   <div class="card">
-    <div class="card-header">
-      <span class="card-title">💬 Análisis Cualitativo</span>
-      <span style="font-size:.7rem;color:var(--muted);font-weight:600;">Respuestas abiertas procesadas automáticamente</span>
-    </div>
-    <div class="card-body" id="cual-panel">
-      <div style="text-align:center;padding:1.5rem;color:var(--muted);">
-        <div style="font-size:1.5rem;margin-bottom:.5rem;">💬</div>
-        <div style="font-size:.82rem;font-weight:700;">Cargando análisis cualitativo…</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
     <div class="card-header"><span class="card-title">🤖 Análisis con IA</span></div>
     <div class="card-body">
       <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem;">
@@ -2619,113 +2628,8 @@ function buildAnalisisCharts(p, resp, escala) {
     const avg = vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length):0;
     const pct = Math.round((avg/escala)*100);
     const cls = pct>=80?'var(--green)':pct>=60?'var(--blue)':pct>=40?'var(--yellow)':'var(--red)';
-    const clasif = pct>=80?'Fortaleza':pct>=60?'Aceptable':'Brecha';
-    const clasifClr = pct>=80?'var(--green)':pct>=60?'var(--blue)':'var(--red)';
-    const clasifBg  = pct>=80?'var(--green-pale)':pct>=60?'var(--blue-pale)':'var(--red-pale)';
-    return `<div class="prog-wrap" style="align-items:center;">
-      <div style="min-width:160px;font-size:.78rem;font-weight:700;">${d.titulo}</div>
-      <div class="prog-bg"><div class="prog-fill" style="width:${pct}%;background:${cls};"></div></div>
-      <div class="prog-pct" style="color:${cls};">${avg.toFixed(1)}/${escala} (${pct}%)</div>
-      <span style="font-size:.62rem;font-weight:800;padding:.15rem .4rem;border-radius:10px;background:${clasifBg};color:${clasifClr};margin-left:.4rem;white-space:nowrap;">${clasif}</span>
-    </div>`;
+    return `<div class="prog-wrap"><div style="min-width:160px;font-size:.78rem;font-weight:700;">${d.titulo}</div><div class="prog-bg"><div class="prog-fill" style="width:${pct}%;background:${cls};"></div></div><div class="prog-pct" style="color:${cls};">${avg.toFixed(1)}/${escala} (${pct}%)</div></div>`;
   }).join('');
-
-  // Render cualitativo
-  renderCualPanel(p, resp, isClima, items);
-}
-
-function renderCualPanel(p, resp, isClima, items) {
-  const el = document.getElementById('cual-panel'); if (!el) return;
-  const cual = procesarCualitativo(resp, items, isClima);
-  if (!cual.total) {
-    el.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.82rem;">No hay respuestas abiertas para analizar en este proyecto.</div>`;
-    return;
-  }
-  const sg = cual.sentimientoGlobal;
-  el.innerHTML = `
-    <!-- Sentimiento global -->
-    <div style="margin-bottom:1rem;">
-      <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.5rem;">${cual.total} respuestas analizadas — sentimiento global</div>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem;">
-        <div style="flex:1;min-width:80px;background:var(--green-pale);border-radius:var(--rs);padding:.7rem;text-align:center;">
-          <div style="font-size:1.3rem;font-weight:900;color:var(--green);">${sg.positivo}%</div>
-          <div style="font-size:.65rem;color:var(--green);font-weight:700;">Positivo</div>
-        </div>
-        <div style="flex:1;min-width:80px;background:var(--yellow-pale);border-radius:var(--rs);padding:.7rem;text-align:center;">
-          <div style="font-size:1.3rem;font-weight:900;color:var(--yellow);">${sg.neutral}%</div>
-          <div style="font-size:.65rem;color:var(--yellow);font-weight:700;">Neutral</div>
-        </div>
-        <div style="flex:1;min-width:80px;background:var(--red-pale);border-radius:var(--rs);padding:.7rem;text-align:center;">
-          <div style="font-size:1.3rem;font-weight:900;color:var(--red);">${sg.negativo}%</div>
-          <div style="font-size:.65rem;color:var(--red);font-weight:700;">Negativo</div>
-        </div>
-      </div>
-      <!-- Barra de sentimiento global -->
-      <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;gap:2px;">
-        <div style="background:var(--green);width:${sg.positivo}%;border-radius:4px 0 0 4px;"></div>
-        <div style="background:var(--yellow);width:${sg.neutral}%;"></div>
-        <div style="background:var(--red);width:${sg.negativo}%;border-radius:0 4px 4px 0;"></div>
-      </div>
-    </div>
-
-    <!-- Nube de temas -->
-    <div style="margin-bottom:1rem;">
-      <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.5rem;">Nube de temas</div>
-      <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
-        ${cual.temas.map(t => {
-          const fontSize = Math.max(0.7, Math.min(1.1, 0.7 + t.pct * 0.015));
-          const clr = t.sentimiento.positivo >= 50 ? 'var(--green)' : t.sentimiento.negativo >= 40 ? 'var(--red)' : 'var(--yellow)';
-          const bg  = t.sentimiento.positivo >= 50 ? 'var(--green-pale)' : t.sentimiento.negativo >= 40 ? 'var(--red-pale)' : 'var(--yellow-pale)';
-          return `<span style="font-size:${fontSize}rem;font-weight:700;background:${bg};color:${clr};padding:.25rem .6rem;border-radius:20px;cursor:default;" title="${t.frecuencia} menciones">${t.tema} <span style="font-size:.62rem;opacity:.8;">${t.frecuencia}x</span></span>`;
-        }).join('')}
-      </div>
-    </div>
-
-    <!-- Ranking de temas -->
-    <div style="margin-bottom:1rem;">
-      <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.5rem;">Ranking de temas</div>
-      ${cual.temas.slice(0,8).map((t,i) => {
-        const posClr = t.sentimiento.positivo >= 50 ? 'var(--green)' : t.sentimiento.negativo >= 40 ? 'var(--red)' : 'var(--yellow)';
-        return `<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;">
-          <span style="font-size:.65rem;font-weight:800;color:var(--muted);min-width:16px;">${i+1}</span>
-          <div style="flex:1;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.2rem;">
-              <span style="font-size:.78rem;font-weight:700;">${t.tema}</span>
-              <span style="font-size:.65rem;color:var(--muted);">${t.frecuencia}x · ${t.pct}%</span>
-            </div>
-            <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;">
-              <div style="background:var(--green);width:${t.sentimiento.positivo}%;"></div>
-              <div style="background:var(--yellow);width:${t.sentimiento.neutral}%;"></div>
-              <div style="background:var(--red);width:${t.sentimiento.negativo}%;"></div>
-            </div>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>
-
-    <!-- Fortalezas y brechas -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:1rem;">
-      <div style="background:var(--green-pale);border-radius:var(--rs);padding:.8rem;">
-        <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:var(--green);margin-bottom:.5rem;">✅ Fortalezas cualitativas</div>
-        ${cual.fortalezas.length ? cual.fortalezas.map(f=>`<div style="font-size:.78rem;font-weight:600;margin-bottom:.3rem;">▸ ${f}</div>`).join('') : '<div style="font-size:.75rem;color:var(--muted);">Sin datos suficientes</div>'}
-      </div>
-      <div style="background:var(--red-pale);border-radius:var(--rs);padding:.8rem;">
-        <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:var(--red);margin-bottom:.5rem;">⚠️ Brechas cualitativas</div>
-        ${cual.brechas.length ? cual.brechas.map(b=>`<div style="font-size:.78rem;font-weight:600;margin-bottom:.3rem;">▸ ${b}</div>`).join('') : '<div style="font-size:.75rem;color:var(--muted);">Sin brechas detectadas</div>'}
-      </div>
-    </div>
-
-    <!-- Citas destacadas -->
-    ${cual.citas.length ? `
-    <div>
-      <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.6rem;">Citas destacadas</div>
-      ${cual.citas.slice(0,4).map(c=>`
-        <div style="border-left:3px solid var(--purple);background:var(--purple-pale);border-radius:0 var(--rs) var(--rs) 0;padding:.7rem 1rem;margin-bottom:.6rem;">
-          <div style="font-size:.8rem;font-style:italic;line-height:1.5;margin-bottom:.3rem;">"${c.texto}"</div>
-          <div style="font-size:.65rem;color:var(--muted);font-weight:700;">— ${c.tema}</div>
-        </div>`).join('')}
-    </div>` : ''}
-  `;
 }
 
 function renderNineBox(resp, p) {
@@ -3129,108 +3033,7 @@ function exportCSVProj(p,resp,isClima,items,escala){
   showToast('✅ CSV exportado','success');
 }
 
-function exportXLSXProj(p, resp, isClima, items, escala) {
-  try {
-    const wb = XLSX.utils.book_new();
-    const D  = buildInformeData(p, resp, isClima, items, escala);
-
-    // S1 — Resumen ejecutivo
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['INFORME DE ' + (isClima?'CLIMA ORGANIZACIONAL':'EVALUACIÓN DE DESEMPEÑO')],
-      [],
-      ['1. RESUMEN EJECUTIVO'],
-      ['Proyecto', p.nombre], ['Empresa', p.empresa], ['Período', p.periodo||'—'],
-      ['Tipo', isClima?'Clima Organizacional':'Evaluación de Desempeño'],
-      ['Escala', '1–'+escala], ['Total respuestas', resp.length],
-      ['Índice global', D.resumen.indiceGlobal+'%'], ['Clasificación', D.resumen.clasificacion],
-      ['Promedio', D.resumen.promedio+'/'+escala],
-      ...(D.resumen.eNPS !== null ? [['eNPS', D.resumen.eNPS], ['Promotores', D.resumen.promotores], ['Neutrales', D.resumen.neutrales], ['Detractores', D.resumen.detractores]] : []),
-      [], ['2. METODOLOGÍA'],
-      ['Tipo evaluación', D.metodologia.tipo], ['Modalidad', D.metodologia.modalidad],
-      ['Dimensiones/Competencias', D.metodologia.totalDimensiones],
-      [], ['Generado', today()],
-    ]), '1-Resumen');
-
-    // S3 — Perfil participantes
-    const perfilRows = [['3. PERFIL DE PARTICIPANTES'],['Total participantes', resp.length],['Áreas', D.perfil.areas],['Empresas', D.perfil.empresas],['Cargos', D.perfil.cargos],[],['POR ÁREA'],['Área','n','Score %','Clasificación'],...D.perfil.distribucionArea.map(s=>[s.label,s.n,s.pct+'%',s.clasif])];
-    if (D.perfil.distribucionEmpresa.length) { perfilRows.push([],['POR EMPRESA'],['Empresa','n','Score %'],...D.perfil.distribucionEmpresa.map(s=>[s.label,s.n,s.pct+'%'])); }
-    if (D.perfil.distribucionCargo.length)   { perfilRows.push([],['POR CARGO'],['Cargo','n','Score %'],...D.perfil.distribucionCargo.map(s=>[s.label,s.n,s.pct+'%'])); }
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(perfilRows), '3-Perfil');
-
-    // S5 — Por dimensión
-    const dimWs = XLSX.utils.aoa_to_sheet([
-      ['5. RESULTADOS POR '+(isClima?'DIMENSIÓN':'COMPETENCIA')],
-      [isClima?'Dimensión':'Competencia','n','Promedio','Score %','Desv. Std','Clasificación'],
-      ...D.dimensiones.map(d=>[d.titulo, d.n, d.avg.toFixed(2), d.pct+'%', d.std, d.clasif])
-    ]);
-    dimWs['!cols'] = [{wch:30},{wch:8},{wch:12},{wch:10},{wch:10},{wch:14}];
-    XLSX.utils.book_append_sheet(wb, dimWs, '5-Dimensiones');
-
-    // S6 — Segmentos
-    const segRows = [['6. RESULTADOS POR SEGMENTO'],['POR ÁREA'],['Área','n','Score %','Clasificación'],...D.segmentos.area.map(s=>[s.label,s.n,s.pct+'%',s.clasif])];
-    if (D.segmentos.cargo.length) segRows.push([],['POR CARGO'],['Cargo','n','Score %'],...D.segmentos.cargo.map(s=>[s.label,s.n,s.pct+'%']));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(segRows), '6-Segmentos');
-
-    // S7 — Cualitativo
-    if (D.cualitativo.total > 0) {
-      const cualRows = [
-        ['7. ANÁLISIS CUALITATIVO'],
-        ['Total respuestas analizadas', D.cualitativo.total],
-        ['Sentimiento positivo', D.cualitativo.sentimientoGlobal.positivo+'%'],
-        ['Sentimiento neutral', D.cualitativo.sentimientoGlobal.neutral+'%'],
-        ['Sentimiento negativo', D.cualitativo.sentimientoGlobal.negativo+'%'],
-        [],
-        ['TEMAS MÁS FRECUENTES'],
-        ['Tema','Frecuencia','% del total','% Positivo','% Neutral','% Negativo'],
-        ...D.cualitativo.temas.map(t=>[t.tema,t.frecuencia,t.pct+'%',t.sentimiento.positivo+'%',t.sentimiento.neutral+'%',t.sentimiento.negativo+'%']),
-        [],
-        ['FORTALEZAS CUALITATIVAS'],
-        ...D.cualitativo.fortalezas.map(f=>[f]),
-        [],
-        ['BRECHAS CUALITATIVAS'],
-        ...D.cualitativo.brechas.map(b=>[b]),
-        [],
-        ['CITAS DESTACADAS'],
-        ['Tema','Texto'],
-        ...D.cualitativo.citas.map(c=>[c.tema, c.texto]),
-      ];
-      const cualWs = XLSX.utils.aoa_to_sheet(cualRows);
-      cualWs['!cols'] = [{wch:28},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12}];
-      XLSX.utils.book_append_sheet(wb, cualWs, '7-Cualitativo');
-    }
-
-    // S8 — Hallazgos y Recomendaciones
-    const s8Rows = [
-      ['8. HALLAZGOS CLAVE Y RECOMENDACIONES'],
-      [],
-      ['HALLAZGOS CLAVE'],
-      ...D.hallazgos.map(h=>['• '+h]),
-      [],
-      ['RECOMENDACIONES ESTRATÉGICAS'],
-      ['Área','Prioridad','Impacto','Acción recomendada'],
-      ...D.recomendaciones.map(r=>[r.area, r.prioridad, r.impacto, r.accion]),
-    ];
-    const s8Ws = XLSX.utils.aoa_to_sheet(s8Rows);
-    s8Ws['!cols'] = [{wch:28},{wch:12},{wch:10},{wch:60}];
-    XLSX.utils.book_append_sheet(wb, s8Ws, '8-Hallazgos');
-
-    // Datos completos
-    if (isClima) {
-      const h = ['Fecha','Nombre','Empresa','Dpto','Cargo','Nivel','Score%','Clasificación','General','Recomienda',...items.map(d=>d.titulo)];
-      const rows = resp.map(r => { const score=r.score??calculateScore(r,p); const clasif=r.clasif||applyCalibration(score,p)?.label; const avgs=items.map((d,di)=>{const v=d.preguntas.map((_,pi)=>r.dimResp?.['dim_'+di+'_'+pi]).filter(v=>typeof v==='number');return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'';});return [r.fecha,r.nombre,r.empresa,r.dept,r.cargo,r.nivel,score,clasif,r.general,r.recomienda,...avgs]; });
-      const ws = XLSX.utils.aoa_to_sheet([h,...rows]); ws['!cols'] = h.map(()=>({wch:16}));
-      XLSX.utils.book_append_sheet(wb, ws, 'Datos completos');
-    } else {
-      const h = ['Fecha','Colaborador','Empresa','Dpto','Evaluador','Score%','Clasificación','Global','Prom.Comp',...items.map(c=>c.titulo)];
-      const rows = resp.map(r => { const score=r.score??calculateScore(r,p); const clasif=r.clasif||applyCalibration(score,p)?.label; const cp=items.map((_,ci)=>r.compProms?.[ci]?.toFixed(1)||'');return [r.fecha,r.ev_nombre,r.ev_empresa,r.ev_dept,r.eval_nombre,score,clasif,r.global,r.prom_comp,...cp]; });
-      const ws = XLSX.utils.aoa_to_sheet([h,...rows]); ws['!cols'] = h.map(()=>({wch:16}));
-      XLSX.utils.book_append_sheet(wb, ws, 'Datos completos');
-    }
-
-    XLSX.writeFile(wb, 'IntraRH_'+p.empresa.replace(/\s+/g,'_')+'_'+today()+'.xlsx');
-    showToast('✅ Excel exportado (8 secciones)','success');
-  } catch(e) { showToast('Error Excel: '+e.message,'error'); console.error(e); }
-}
+function exportXLSXProj(p,resp,isClima,items,escala){
   try{
     const wb=XLSX.utils.book_new();
     const scores=resp.map(r=>r.score??calculateScore(r,p));
@@ -3262,310 +3065,8 @@ function exportXLSXProj(p, resp, isClima, items, escala) {
   }catch(e){showToast('Error Excel: '+e.message,'error');}
 }
 
-// ── INFORME PDF BRANDED — 8 SECCIONES ──
+// ── INFORME PDF BRANDED (estilo Conformatic) ──
 function exportPDFProj(p, resp, isClima, items, escala) {
-  try {
-    const {jsPDF} = window.jspdf;
-    const orient = getInfOrient();
-    const isLand = orient === 'landscape';
-    const doc    = new jsPDF({ orientation: orient, unit: 'mm', format: 'a4' });
-    const W = isLand ? 297 : 210, H = isLand ? 210 : 297, mg = 16;
-    const C = getProjectColors(p), SIDE = 48;
-    const D = buildInformeData(p, resp, isClima, items, escala);
-
-    const addHeader = (doc, title) => {
-      doc.setFillColor(...C.primary); doc.rect(0, 0, W, isLand?12:10, 'F');
-      doc.setFillColor(...C.primary); doc.rect(W-SIDE, 0, SIDE, H, 'F');
-      doc.setTextColor(255,255,255); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
-      doc.text(p.empresa + ' · ' + p.nombre, mg, isLand?8.5:7.5);
-      doc.text(today(), W-SIDE-2, isLand?8.5:7.5, {align:'right'});
-      doc.setTextColor(...C.dark); doc.setFontSize(isLand?11:9.5); doc.setFont('helvetica','bold');
-      doc.text(title, mg, isLand?20:18);
-      doc.setDrawColor(...C.primary); doc.setLineWidth(0.5);
-      doc.line(mg, isLand?22:20, W-SIDE-mg, isLand?22:20);
-      return isLand ? 28 : 26;
-    };
-
-    const sectionTitle = (doc, txt, y) => {
-      doc.setFillColor(...C.light); doc.roundedRect(mg, y, W-SIDE-mg*2, isLand?7:6, 1, 1, 'F');
-      doc.setFillColor(...C.primary); doc.rect(mg, y, 2.5, isLand?7:6, 'F');
-      doc.setTextColor(...C.primary); doc.setFontSize(isLand?9:8); doc.setFont('helvetica','bold');
-      doc.text(txt, mg+5, y+(isLand?5:4.2));
-      return y + (isLand ? 11 : 10);
-    };
-
-    const checkPage = (doc, y, needed=12) => {
-      if (y > H - needed - 10) {
-        doc.addPage();
-        doc.setFillColor(...C.primary); doc.rect(W-SIDE, 0, SIDE, H, 'F');
-        doc.setFontSize(6.5); doc.setTextColor(...C.muted);
-        doc.text('IntraRHecursos · ' + p.nombre + ' · ' + today(), mg, H-4);
-        return isLand ? 16 : 14;
-      }
-      return y;
-    };
-
-    // ══ PORTADA ══
-    doc.setFillColor(...C.primary); doc.rect(W-SIDE, 0, SIDE, H, 'F');
-    doc.setFillColor(...C.accent);  doc.rect(0, H-36, W-SIDE, 36, 'F');
-    doc.setTextColor(...C.dark); doc.setFontSize(isLand?32:24); doc.setFont('helvetica','bold');
-    doc.text(isClima ? 'CLIMA\nORGANIZACIONAL' : 'EVALUACIÓN DE\nDESEMPEÑO', mg, isLand?55:45, {maxWidth: W-SIDE-mg*2});
-    doc.setFontSize(isLand?18:14); doc.setTextColor(...C.secondary); doc.setFont('helvetica','bold');
-    doc.text(p.empresa.toUpperCase(), mg, isLand?100:98);
-    doc.setFontSize(isLand?13:11); doc.setTextColor(...C.dark); doc.setFont('helvetica','normal');
-    doc.text((p.periodo||today()).toUpperCase(), mg, isLand?113:112);
-    const clrPortada = scoreColor(D.resumen.indiceGlobal);
-    doc.setFillColor(...clrPortada); doc.circle(W-SIDE/2, H/2-10, 20, 'F');
-    doc.setTextColor(255,255,255); doc.setFontSize(isLand?22:18); doc.setFont('helvetica','bold');
-    doc.text(D.resumen.indiceGlobal+'%', W-SIDE/2, H/2-6, {align:'center'});
-    doc.setFontSize(7); doc.text('Índice global', W-SIDE/2, H/2+4, {align:'center'});
-    doc.setTextColor(255,255,255); doc.setFontSize(isLand?9:8); doc.setFont('helvetica','bold');
-    doc.text(p.empresa, mg, H-22);
-    doc.setFontSize(7); doc.setFont('helvetica','normal');
-    doc.text('IntraRHecursos · Sistema de Evaluaciones', mg, H-14);
-    doc.text(today(), mg, H-8);
-
-    // ══ S1 — RESUMEN EJECUTIVO ══
-    doc.addPage(); doc.setFillColor(...C.primary); doc.rect(W-SIDE,0,SIDE,H,'F');
-    let y = addHeader(doc, '1. Resumen Ejecutivo');
-    const kpis = [
-      [D.resumen.indiceGlobal+'%', 'Índice Global', C.primary],
-      [D.resumen.totalRespuestas+'', 'Participantes', C.secondary],
-      [D.resumen.eNPS !== null ? D.resumen.eNPS+'' : 'N/A', 'eNPS', [39,174,96]],
-      [D.resumen.clasificacion.split(' ')[1]||D.resumen.clasificacion, 'Clasificación', scoreColor(D.resumen.indiceGlobal)],
-    ];
-    const kW = (W-SIDE-mg*2-9)/4;
-    kpis.forEach(([val,lbl,clr], i) => {
-      const kx = mg + i*(kW+3);
-      doc.setFillColor(...C.light); doc.roundedRect(kx, y, kW, isLand?20:17, 2, 2, 'F');
-      doc.setFillColor(...clr); doc.rect(kx, y, kW, 1.5, 'F');
-      doc.setFontSize(6); doc.setFont('helvetica','normal'); doc.setTextColor(...C.muted); doc.text(lbl, kx+3, y+7);
-      doc.setFontSize(isLand?14:12); doc.setFont('helvetica','bold'); doc.setTextColor(...clr); doc.text(val, kx+3, y+(isLand?17:14));
-    });
-    y += isLand ? 25 : 22;
-    y = sectionTitle(doc, 'Clasificación: ' + D.resumen.clasificacion, y);
-    doc.setFontSize(isLand?8.5:7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark);
-    const resumenTxt = `Proyecto: ${p.nombre} · Empresa: ${p.empresa} · Período: ${p.periodo||'—'} · Escala: 1–${escala} · Respuestas: ${resp.length}`;
-    doc.text(doc.splitTextToSize(resumenTxt, W-SIDE-mg*2), mg, y); y += 10;
-    if (D.resumen.eNPS !== null) {
-      y = sectionTitle(doc, 'eNPS: ' + D.resumen.eNPS, y);
-      doc.setFontSize(8); doc.setTextColor(...C.dark);
-      doc.text(`Promotores: ${D.resumen.promotores}  ·  Neutrales: ${D.resumen.neutrales}  ·  Detractores: ${D.resumen.detractores}`, mg, y); y += 8;
-    }
-
-    // ══ S2 — METODOLOGÍA ══
-    y = checkPage(doc, y, 60);
-    y = sectionTitle(doc, '2. Metodología', y);
-    const metaRows = [
-      ['Tipo de evaluación', D.metodologia.tipo],
-      ['Escala', D.metodologia.escala + ' puntos'],
-      ['Total participantes', String(D.metodologia.totalParticipantes)],
-      ['Dimensiones / Competencias', String(D.metodologia.totalDimensiones)],
-      ['Período', D.metodologia.periodo],
-      ['Modalidad', D.metodologia.modalidad],
-    ];
-    metaRows.forEach(([k,v]) => {
-      doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(...C.dark);
-      doc.text(k+':', mg, y);
-      doc.setFont('helvetica','normal'); doc.setTextColor(...C.muted);
-      doc.text(v, mg+52, y); y += 6.5;
-    });
-
-    // ══ S3 — PERFIL DE PARTICIPANTES ══
-    y = checkPage(doc, y, 50);
-    y = sectionTitle(doc, '3. Perfil de Participantes', y);
-    if (D.perfil.distribucionArea.length) {
-      doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(...C.dark);
-      doc.text('Por área/departamento:', mg, y); y += 5.5;
-      D.perfil.distribucionArea.forEach(s => {
-        y = checkPage(doc, y);
-        doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark);
-        doc.text(`${s.label}`, mg+3, y);
-        const bW2 = W-SIDE-mg*2-60;
-        doc.setFillColor(220,226,235); doc.roundedRect(mg+55, y-3.5, bW2, 4, 1,1,'F');
-        doc.setFillColor(...C.primary); doc.roundedRect(mg+55, y-3.5, Math.max(bW2*s.n/Math.max(resp.length,1),0.5), 4, 1,1,'F');
-        doc.setFont('helvetica','bold'); doc.setTextColor(...C.primary);
-        doc.text('n='+s.n, W-SIDE-2, y, {align:'right'}); y += 7;
-      });
-    }
-    if (D.perfil.distribucionEmpresa.length > 1) {
-      y = checkPage(doc, y);
-      doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(...C.dark);
-      doc.text('Por empresa:', mg, y); y += 5.5;
-      D.perfil.distribucionEmpresa.forEach(s => {
-        doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark);
-        doc.text(`${s.label}: n=${s.n} (${s.pct}%)`, mg+3, y); y += 6;
-      });
-    }
-
-    // ══ S4 — RESULTADOS GENERALES ══
-    doc.addPage(); doc.setFillColor(...C.primary); doc.rect(W-SIDE,0,SIDE,H,'F');
-    y = addHeader(doc, '4. Resultados Generales');
-    // Semáforo visual
-    const levels = isClima
-      ? [{l:'Clima Favorable',r:'85–100%',min:85},{l:'Clima Aceptable',r:'70–84%',min:70},{l:'Clima en Riesgo',r:'50–69%',min:50},{l:'Clima Crítico',r:'0–49%',min:0}]
-      : [{l:'Sobresaliente',r:'90–100%',min:90},{l:'Supera expectativas',r:'75–89%',min:75},{l:'Cumple expectativas',r:'55–74%',min:55},{l:'Por debajo',r:'35–54%',min:35},{l:'Insuficiente',r:'0–34%',min:0}];
-    const active = levels.findIndex(lv => D.resumen.indiceGlobal >= lv.min);
-    const lvW = (W-SIDE-mg*2)/levels.length - 2;
-    levels.forEach((lv, i) => {
-      const lx = mg + i*(lvW+2);
-      const isAct = i === active;
-      const clrLv = scoreColor(lv.min);
-      doc.setFillColor(...(isAct ? clrLv : [220,226,235])); doc.roundedRect(lx, y, lvW, isLand?14:12, 2,2,'F');
-      doc.setTextColor(isAct ? 255 : 150, isAct ? 255 : 155, isAct ? 255 : 165);
-      doc.setFontSize(isLand?7:6.5); doc.setFont('helvetica', isAct?'bold':'normal');
-      doc.text(lv.l, lx+lvW/2, y+(isLand?6:5), {align:'center', maxWidth:lvW-2});
-      doc.text(lv.r, lx+lvW/2, y+(isLand?11:9.5), {align:'center'});
-    });
-    y += isLand ? 20 : 18;
-    // Score grande
-    const bigClr = scoreColor(D.resumen.indiceGlobal);
-    doc.setFillColor(...C.light); doc.roundedRect(mg, y, 44, isLand?24:20, 3,3,'F');
-    doc.setFillColor(...bigClr); doc.rect(mg, y, 44, 2, 'F');
-    doc.setFontSize(isLand?24:20); doc.setFont('helvetica','bold'); doc.setTextColor(...bigClr);
-    doc.text(D.resumen.indiceGlobal+'%', mg+22, y+(isLand?16:13), {align:'center'});
-    doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(...C.muted);
-    doc.text('Score global', mg+22, y+(isLand?21:17.5), {align:'center'});
-    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark);
-    doc.text(D.resumen.clasificacion, mg+50, y+8);
-    doc.text(`Promedio: ${D.resumen.promedio}/${escala}`, mg+50, y+15);
-    doc.text(`n = ${resp.length} respuestas`, mg+50, y+(isLand?22:19));
-    y += isLand ? 30 : 26;
-
-    // ══ S5 — RESULTADOS POR DIMENSIÓN ══
-    y = checkPage(doc, y, 20);
-    y = sectionTitle(doc, '5. Resultados por ' + (isClima?'Dimensión':'Competencia'), y);
-    const barW = W-SIDE-mg*2-58;
-    D.dimensiones.forEach(d => {
-      y = checkPage(doc, y);
-      const clr = scoreColor(d.pct);
-      doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark);
-      doc.text(d.titulo.substring(0,32), mg, y);
-      // Clasificación badge
-      doc.setFontSize(6); doc.setTextColor(d.clasif==='Fortaleza'?39:d.clasif==='Aceptable'?26:231, d.clasif==='Fortaleza'?174:d.clasif==='Aceptable'?167:76, d.clasif==='Fortaleza'?96:d.clasif==='Aceptable'?216:60);
-      doc.text(d.clasif, mg, y+4);
-      // Barra
-      doc.setFillColor(220,226,235); doc.roundedRect(mg+50, y-4, barW, 5, 1,1,'F');
-      doc.setFillColor(...clr); doc.roundedRect(mg+50, y-4, Math.max(barW*d.pct/100, 0.5), 5, 1,1,'F');
-      doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(...clr);
-      doc.text(d.avg.toFixed(1)+'/'+escala+' ('+d.pct+'%)', W-SIDE-2, y, {align:'right'});
-      y += 9.5;
-    });
-
-    // ══ S6 — RESULTADOS POR SEGMENTO ══
-    doc.addPage(); doc.setFillColor(...C.primary); doc.rect(W-SIDE,0,SIDE,H,'F');
-    y = addHeader(doc, '6. Resultados por Segmento');
-    if (D.segmentos.area.length) {
-      y = sectionTitle(doc, 'Por área / departamento', y);
-      D.segmentos.area.forEach(s => {
-        y = checkPage(doc, y);
-        const clr = scoreColor(s.pct);
-        doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark); doc.text(s.label.substring(0,28), mg, y);
-        doc.setFillColor(220,226,235); doc.roundedRect(mg+50, y-4, barW, 5, 1,1,'F');
-        doc.setFillColor(...clr); doc.roundedRect(mg+50, y-4, Math.max(barW*s.pct/100,0.5), 5, 1,1,'F');
-        doc.setFont('helvetica','bold'); doc.setTextColor(...clr); doc.text(s.pct+'% (n='+s.n+')', W-SIDE-2, y, {align:'right'});
-        y += 9;
-      });
-    }
-    if (D.segmentos.cargo.length) {
-      y = checkPage(doc, y, 30); y = sectionTitle(doc, 'Por cargo / nivel', y);
-      D.segmentos.cargo.forEach(s => {
-        y = checkPage(doc, y);
-        const clr = scoreColor(s.pct);
-        doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark); doc.text(s.label.substring(0,28), mg, y);
-        doc.setFillColor(220,226,235); doc.roundedRect(mg+50, y-4, barW, 5, 1,1,'F');
-        doc.setFillColor(...clr); doc.roundedRect(mg+50, y-4, Math.max(barW*s.pct/100,0.5), 5, 1,1,'F');
-        doc.setFont('helvetica','bold'); doc.setTextColor(...clr); doc.text(s.pct+'% (n='+s.n+')', W-SIDE-2, y, {align:'right'});
-        y += 9;
-      });
-    }
-
-    // ══ S7 — ANÁLISIS CUALITATIVO ══
-    if (D.cualitativo.total > 0) {
-      doc.addPage(); doc.setFillColor(...C.primary); doc.rect(W-SIDE,0,SIDE,H,'F');
-      y = addHeader(doc, '7. Análisis Cualitativo');
-      // Sentimiento global
-      y = sectionTitle(doc, 'Distribución de sentimiento (' + D.cualitativo.total + ' respuestas)', y);
-      const sg = D.cualitativo.sentimientoGlobal;
-      const sentW = (W-SIDE-mg*2)/3 - 2;
-      [['Positivo', sg.positivo, [39,174,96]], ['Neutral', sg.neutral, [243,156,18]], ['Negativo', sg.negativo, [231,76,60]]].forEach(([lbl,pct,clr],i) => {
-        const sx = mg + i*(sentW+2);
-        doc.setFillColor(...clr); doc.setDrawColor(255,255,255);
-        doc.roundedRect(sx, y, sentW, isLand?14:12, 2,2,'F');
-        doc.setTextColor(255,255,255); doc.setFontSize(isLand?14:12); doc.setFont('helvetica','bold');
-        doc.text(pct+'%', sx+sentW/2, y+(isLand?8:7), {align:'center'});
-        doc.setFontSize(7); doc.setFont('helvetica','normal');
-        doc.text(lbl, sx+sentW/2, y+(isLand?13:11), {align:'center'});
-      });
-      y += isLand ? 19 : 17;
-      // Top temas
-      y = sectionTitle(doc, 'Temas más frecuentes', y);
-      D.cualitativo.temas.slice(0,8).forEach(t => {
-        y = checkPage(doc, y);
-        const clrT = t.sentimiento.positivo >= 50 ? [39,174,96] : t.sentimiento.negativo >= 40 ? [231,76,60] : [243,156,18];
-        doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark);
-        doc.text(t.tema.substring(0,28), mg, y);
-        doc.setFillColor(220,226,235); doc.roundedRect(mg+50, y-4, barW, 5, 1,1,'F');
-        doc.setFillColor(...clrT); doc.roundedRect(mg+50, y-4, Math.max(barW*t.pct/100,0.5), 5, 1,1,'F');
-        doc.setFont('helvetica','bold'); doc.setTextColor(...clrT);
-        doc.text(t.frecuencia+'x ('+t.pct+'%)', W-SIDE-2, y, {align:'right'}); y += 9;
-      });
-      // Citas
-      if (D.cualitativo.citas.length) {
-        y = checkPage(doc, y, 30); y = sectionTitle(doc, 'Citas destacadas', y);
-        D.cualitativo.citas.slice(0,4).forEach(c => {
-          y = checkPage(doc, y, 16);
-          doc.setFillColor(...C.light); doc.roundedRect(mg, y, W-SIDE-mg*2, isLand?12:10, 1,1,'F');
-          doc.setFillColor(...C.secondary); doc.rect(mg, y, 2, isLand?12:10, 'F');
-          doc.setFontSize(6.5); doc.setFont('helvetica','italic'); doc.setTextColor(...C.dark);
-          const cLines = doc.splitTextToSize('"'+c.texto.substring(0,120)+'"', W-SIDE-mg*2-8);
-          doc.text(cLines, mg+4, y+5);
-          doc.setFont('helvetica','bold'); doc.setTextColor(...C.muted);
-          doc.text('— '+c.tema, W-SIDE-2, y+(isLand?10:8.5), {align:'right'});
-          y += isLand ? 15 : 13;
-        });
-      }
-    }
-
-    // ══ S8 — HALLAZGOS Y RECOMENDACIONES ══
-    doc.addPage(); doc.setFillColor(...C.primary); doc.rect(W-SIDE,0,SIDE,H,'F');
-    y = addHeader(doc, '8. Hallazgos Clave y Recomendaciones');
-    y = sectionTitle(doc, 'Hallazgos clave', y);
-    D.hallazgos.forEach(h => {
-      y = checkPage(doc, y);
-      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark);
-      const lines = doc.splitTextToSize('▸ ' + h, W-SIDE-mg*2-4);
-      doc.text(lines, mg+3, y);
-      y += lines.length * 5.5 + 1;
-    });
-    y = checkPage(doc, y, 40); y = sectionTitle(doc, 'Recomendaciones estratégicas', y);
-    D.recomendaciones.forEach((r, i) => {
-      y = checkPage(doc, y, 20);
-      const rclr = r.prioridad==='Alta'?[231,76,60]:r.prioridad==='Media'?[243,156,18]:[39,174,96];
-      doc.setFillColor(...C.light); doc.roundedRect(mg, y, W-SIDE-mg*2, isLand?14:12, 2,2,'F');
-      doc.setFillColor(...rclr); doc.rect(mg, y, 2, isLand?14:12, 'F');
-      doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(...rclr);
-      doc.text(r.prioridad + ' · ' + r.area, mg+4, y+5);
-      doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark);
-      const aLines = doc.splitTextToSize(r.accion, W-SIDE-mg*2-8);
-      doc.text(aLines, mg+4, y+(isLand?10:9));
-      y += isLand ? 18 : 16;
-    });
-
-    // Footer todas las páginas
-    const nPages = doc.getNumberOfPages();
-    for (let i=1; i<=nPages; i++) {
-      doc.setPage(i);
-      doc.setFontSize(6.5); doc.setTextColor(...C.muted);
-      doc.text('IntraRHecursos · '+p.nombre+' · '+today(), mg, H-4);
-      doc.setTextColor(255,255,255); doc.setFontSize(7);
-      doc.text('Pág. '+i+'/'+nPages, W-SIDE/2, H-8, {align:'center'});
-    }
-
-    doc.save('IntraRH_'+p.empresa.replace(/\s+/g,'_')+'_'+today()+'.pdf');
-    showToast('✅ PDF exportado (8 secciones)','success');
-  } catch(e) { showToast('Error PDF: '+e.message,'error'); console.error(e); }
-}
   try {
     const {jsPDF}=window.jspdf;
     const orient=getInfOrient();
@@ -3729,187 +3230,6 @@ async function exportWordProj(p, resp, isClima, items, escala) {
 }
 
 function _exportWordFallback(p, resp, isClima, items, escala) {
-  const D = buildInformeData(p, resp, isClima, items, escala);
-
-  const secTitle = (n, t) => `<h2 style="color:#1264A3;font-size:13pt;margin:24pt 0 6pt;border-bottom:2pt solid #1264A3;padding-bottom:4pt;">${n}. ${t}</h2>`;
-  const subTitle = (t)    => `<h3 style="color:#7B4FA6;font-size:10.5pt;margin:14pt 0 5pt;">${t}</h3>`;
-  const bar = (pct, clr)  => `<div style="background:#E8EDF2;border-radius:3pt;height:10pt;width:100%;margin:2pt 0;"><div style="background:${clr};border-radius:3pt;height:10pt;width:${pct}%;"></div></div>`;
-  const badge = (txt, clr, bg) => `<span style="background:${bg};color:${clr};font-size:8pt;font-weight:bold;padding:2pt 7pt;border-radius:3pt;">${txt}</span>`;
-  const scoreClr = (pct) => pct>=80?'#27AE60':pct>=60?'#1264A3':pct>=40?'#F39C12':'#E74C3C';
-  const scoreBg  = (pct) => pct>=80?'#E8F8EE':pct>=60?'#E3F2FD':pct>=40?'#FFF8E1':'#FDECEA';
-
-  // ── S1 Resumen Ejecutivo ──
-  const s1 = `${secTitle(1,'Resumen Ejecutivo')}
-<table style="border-collapse:collapse;width:100%;margin-bottom:12pt;">
-  <tr>
-    <td style="background:#1264A3;color:#fff;text-align:center;padding:14pt;width:22%;border-radius:4pt;">
-      <div style="font-size:28pt;font-weight:900;">${D.resumen.indiceGlobal}%</div>
-      <div style="font-size:8pt;">Índice Global</div>
-    </td>
-    <td style="background:${scoreBg(D.resumen.indiceGlobal)};text-align:center;padding:14pt;width:22%;">
-      <div style="font-size:16pt;font-weight:bold;color:${scoreClr(D.resumen.indiceGlobal)};">${D.resumen.clasificacion}</div>
-      <div style="font-size:8pt;color:#666">Clasificación</div>
-    </td>
-    <td style="background:#F5F5F5;text-align:center;padding:14pt;width:18%;">
-      <div style="font-size:16pt;font-weight:bold;color:#1264A3;">${D.resumen.totalRespuestas}</div>
-      <div style="font-size:8pt;color:#666">Participantes</div>
-    </td>
-    <td style="background:#F5F5F5;text-align:center;padding:14pt;width:18%;">
-      <div style="font-size:16pt;font-weight:bold;color:#27AE60;">${D.resumen.eNPS !== null ? D.resumen.eNPS : 'N/A'}</div>
-      <div style="font-size:8pt;color:#666">eNPS</div>
-    </td>
-    <td style="background:#F5F5F5;text-align:center;padding:14pt;width:20%;">
-      <div style="font-size:13pt;font-weight:bold;color:#7B4FA6;">${D.resumen.promedio}/${escala}</div>
-      <div style="font-size:8pt;color:#666">Promedio</div>
-    </td>
-  </tr>
-</table>
-${D.resumen.eNPS !== null ? `<p style="font-size:9pt;color:#444;">eNPS: <b>${D.resumen.eNPS}</b> — Promotores: <b>${D.resumen.promotores}</b> · Neutrales: <b>${D.resumen.neutrales}</b> · Detractores: <b>${D.resumen.detractores}</b></p>` : ''}`;
-
-  // ── S2 Metodología ──
-  const s2 = `${secTitle(2,'Metodología')}
-<table style="border-collapse:collapse;width:60%;font-size:9pt;">
-  ${[['Tipo de evaluación',D.metodologia.tipo],['Escala',D.metodologia.escala+' puntos'],['Participantes',String(D.metodologia.totalParticipantes)],[isClima?'Dimensiones':'Competencias',String(D.metodologia.totalDimensiones)],['Período',D.metodologia.periodo],['Modalidad',D.metodologia.modalidad]].map(([k,v])=>`<tr><td style="font-weight:bold;padding:5pt 10pt;background:#F5F5F5;width:45%;border-bottom:1pt solid #E0E0E0;">${k}</td><td style="padding:5pt 10pt;border-bottom:1pt solid #E0E0E0;">${v}</td></tr>`).join('')}
-</table>`;
-
-  // ── S3 Perfil ──
-  const s3 = `${secTitle(3,'Perfil de Participantes')}
-<p style="font-size:9pt;">Total: <b>${D.perfil.totalParticipantes}</b> participantes · <b>${D.perfil.areas}</b> áreas · <b>${D.perfil.empresas}</b> empresa(s) · <b>${D.perfil.cargos}</b> cargo(s)</p>
-${D.perfil.distribucionArea.length ? subTitle('Distribución por área')+'<table style="border-collapse:collapse;width:100%;font-size:9pt;"><thead><tr><th style="background:#1264A3;color:#fff;padding:5pt 8pt;text-align:left;">Área</th><th style="background:#1264A3;color:#fff;padding:5pt 8pt;text-align:center;">n</th><th style="background:#1264A3;color:#fff;padding:5pt 8pt;text-align:center;">Score</th><th style="background:#1264A3;color:#fff;padding:5pt 8pt;">Gráfico</th></tr></thead><tbody>'+D.perfil.distribucionArea.map((s,i)=>`<tr style="background:${i%2?'#FAFAFA':'#fff'};"><td style="padding:5pt 8pt;">${s.label}</td><td style="text-align:center;padding:5pt 8pt;">${s.n}</td><td style="text-align:center;font-weight:bold;color:${scoreClr(s.pct)};padding:5pt 8pt;">${s.pct}%</td><td style="padding:5pt 8pt;">${bar(s.pct,scoreClr(s.pct))}</td></tr>`).join('')+'</tbody></table>' : ''}`;
-
-  // ── S4 Resultados Generales ──
-  const s4 = `${secTitle(4,'Resultados Generales')}
-<table style="border-collapse:collapse;width:100%;font-size:9pt;margin-bottom:10pt;">
-  <tr>
-    <td style="background:${scoreClr(D.generales.indiceGlobal)};color:#fff;text-align:center;padding:18pt;width:25%;">
-      <div style="font-size:36pt;font-weight:900;">${D.generales.indiceGlobal}%</div>
-      <div style="font-size:9pt;">${D.generales.clasificacion}</div>
-    </td>
-    <td style="padding:12pt 20pt;vertical-align:top;">
-      <p style="font-size:10pt;font-weight:bold;color:#1264A3;margin-bottom:6pt;">Interpretación</p>
-      <p style="font-size:9pt;line-height:1.6;">El índice general de <b>${D.generales.indiceGlobal}%</b> (${D.generales.avgScore}/${escala}) sitúa a ${p.empresa} en la categoría <b>${D.generales.clasificacion}</b>. ${D.generales.indiceGlobal>=80?'Los resultados reflejan un ambiente organizacional sólido con fortalezas claras.':D.generales.indiceGlobal>=60?'Existen áreas de oportunidad que requieren atención y planes de acción.':'Se identifican brechas significativas que demandan intervención prioritaria.'}</p>
-      ${D.generales.eNPS !== null ? `<p style="font-size:9pt;">eNPS: <b style="color:${D.generales.eNPS>0?'#27AE60':'#E74C3C'};">${D.generales.eNPS}</b> — ${D.generales.eNPS>30?'Alta recomendación':D.generales.eNPS>0?'Recomendación positiva':'Recomendación en riesgo'}</p>` : ''}
-    </td>
-  </tr>
-</table>`;
-
-  // ── S5 Por dimensión ──
-  const s5 = `${secTitle(5,'Resultados por ' + (isClima?'Dimensión':'Competencia'))}
-<table style="border-collapse:collapse;width:100%;font-size:9pt;">
-  <thead><tr>
-    <th style="background:#1264A3;color:#fff;padding:6pt 10pt;text-align:left;">${isClima?'Dimensión':'Competencia'}</th>
-    <th style="background:#1264A3;color:#fff;padding:6pt 10pt;text-align:center;">n</th>
-    <th style="background:#1264A3;color:#fff;padding:6pt 10pt;text-align:center;">Promedio</th>
-    <th style="background:#1264A3;color:#fff;padding:6pt 10pt;text-align:center;">Score</th>
-    <th style="background:#1264A3;color:#fff;padding:6pt 10pt;text-align:center;">Clasificación</th>
-    <th style="background:#1264A3;color:#fff;padding:6pt 10pt;">Gráfico</th>
-  </tr></thead>
-  <tbody>
-    ${D.dimensiones.map((d,i)=>`<tr style="background:${i%2?'#FAFAFA':'#fff'};">
-      <td style="padding:6pt 10pt;font-weight:bold;">${d.titulo}</td>
-      <td style="text-align:center;padding:6pt 10pt;">${d.n}</td>
-      <td style="text-align:center;font-weight:bold;color:${scoreClr(d.pct)};padding:6pt 10pt;">${d.avg.toFixed(2)}/${escala}</td>
-      <td style="text-align:center;font-weight:bold;color:${scoreClr(d.pct)};padding:6pt 10pt;">${d.pct}%</td>
-      <td style="text-align:center;padding:6pt 10pt;">${badge(d.clasif,scoreClr(d.pct),scoreBg(d.pct))}</td>
-      <td style="padding:6pt 10pt;">${bar(d.pct,scoreClr(d.pct))}</td>
-    </tr>`).join('')}
-  </tbody>
-</table>`;
-
-  // ── S6 Por segmento ──
-  const s6 = `${secTitle(6,'Resultados por Segmento')}
-${D.segmentos.area.length ? subTitle('Por área / departamento')+'<table style="border-collapse:collapse;width:100%;font-size:9pt;"><thead><tr><th style="background:#7B4FA6;color:#fff;padding:5pt 8pt;text-align:left;">Área</th><th style="background:#7B4FA6;color:#fff;padding:5pt 8pt;text-align:center;">n</th><th style="background:#7B4FA6;color:#fff;padding:5pt 8pt;text-align:center;">Score</th><th style="background:#7B4FA6;color:#fff;padding:5pt 8pt;">Clasificación</th><th style="background:#7B4FA6;color:#fff;padding:5pt 8pt;">Gráfico</th></tr></thead><tbody>'+D.segmentos.area.map((s,i)=>`<tr style="background:${i%2?'#FAFAFA':'#fff'};"><td style="padding:5pt 8pt;">${s.label}</td><td style="text-align:center;padding:5pt 8pt;">${s.n}</td><td style="text-align:center;font-weight:bold;color:${scoreClr(s.pct)};padding:5pt 8pt;">${s.pct}%</td><td style="padding:5pt 8pt;">${badge(s.clasif,scoreClr(s.pct),scoreBg(s.pct))}</td><td style="padding:5pt 8pt;">${bar(s.pct,scoreClr(s.pct))}</td></tr>`).join('')+'</tbody></table>' : '<p style="color:#999;font-size:9pt;">No hay datos de segmentación disponibles.</p>'}
-${D.segmentos.cargo.length > 1 ? subTitle('Por cargo / nivel')+'<table style="border-collapse:collapse;width:100%;font-size:9pt;"><thead><tr><th style="background:#7B4FA6;color:#fff;padding:5pt 8pt;">Cargo</th><th style="background:#7B4FA6;color:#fff;padding:5pt 8pt;text-align:center;">n</th><th style="background:#7B4FA6;color:#fff;padding:5pt 8pt;text-align:center;">Score</th><th style="background:#7B4FA6;color:#fff;padding:5pt 8pt;">Gráfico</th></tr></thead><tbody>'+D.segmentos.cargo.map((s,i)=>`<tr style="background:${i%2?'#FAFAFA':'#fff'};"><td style="padding:5pt 8pt;">${s.label}</td><td style="text-align:center;padding:5pt 8pt;">${s.n}</td><td style="text-align:center;font-weight:bold;color:${scoreClr(s.pct)};padding:5pt 8pt;">${s.pct}%</td><td style="padding:5pt 8pt;">${bar(s.pct,scoreClr(s.pct))}</td></tr>`).join('')+'</tbody></table>' : ''}`;
-
-  // ── S7 Cualitativo ──
-  const cual = D.cualitativo;
-  const s7 = cual.total > 0 ? `${secTitle(7,'Análisis Cualitativo')}
-<p style="font-size:9pt;"><b>${cual.total}</b> respuestas abiertas procesadas · Sentimiento global: <span style="color:#27AE60;font-weight:bold;">${cual.sentimientoGlobal.positivo}% positivo</span> · <span style="color:#F39C12;font-weight:bold;">${cual.sentimientoGlobal.neutral}% neutral</span> · <span style="color:#E74C3C;font-weight:bold;">${cual.sentimientoGlobal.negativo}% negativo</span></p>
-${subTitle('Temas más frecuentes')}
-<table style="border-collapse:collapse;width:100%;font-size:9pt;">
-  <thead><tr>
-    <th style="background:#1264A3;color:#fff;padding:5pt 8pt;text-align:left;">Tema</th>
-    <th style="background:#1264A3;color:#fff;padding:5pt 8pt;text-align:center;">Frecuencia</th>
-    <th style="background:#1264A3;color:#fff;padding:5pt 8pt;text-align:center;">Positivo</th>
-    <th style="background:#1264A3;color:#fff;padding:5pt 8pt;text-align:center;">Neutral</th>
-    <th style="background:#1264A3;color:#fff;padding:5pt 8pt;text-align:center;">Negativo</th>
-    <th style="background:#1264A3;color:#fff;padding:5pt 8pt;">Gráfico sent.</th>
-  </tr></thead>
-  <tbody>
-    ${cual.temas.slice(0,10).map((t,i)=>`<tr style="background:${i%2?'#FAFAFA':'#fff'};">
-      <td style="padding:5pt 8pt;font-weight:bold;">${t.tema}</td>
-      <td style="text-align:center;padding:5pt 8pt;">${t.frecuencia} (${t.pct}%)</td>
-      <td style="text-align:center;color:#27AE60;font-weight:bold;padding:5pt 8pt;">${t.sentimiento.positivo}%</td>
-      <td style="text-align:center;color:#F39C12;font-weight:bold;padding:5pt 8pt;">${t.sentimiento.neutral}%</td>
-      <td style="text-align:center;color:#E74C3C;font-weight:bold;padding:5pt 8pt;">${t.sentimiento.negativo}%</td>
-      <td style="padding:5pt 8pt;"><div style="background:#E8EDF2;border-radius:2pt;height:8pt;display:flex;overflow:hidden;"><div style="background:#27AE60;width:${t.sentimiento.positivo}%;"></div><div style="background:#F39C12;width:${t.sentimiento.neutral}%;"></div><div style="background:#E74C3C;width:${t.sentimiento.negativo}%;"></div></div></td>
-    </tr>`).join('')}
-  </tbody>
-</table>
-${cual.fortalezas.length ? subTitle('Fortalezas cualitativas')+'<ul style="font-size:9pt;line-height:1.8;">'+cual.fortalezas.map(f=>`<li style="color:#27AE60;"><span style="color:#333;">${f}</span></li>`).join('')+'</ul>' : ''}
-${cual.brechas.length ? subTitle('Brechas cualitativas')+'<ul style="font-size:9pt;line-height:1.8;">'+cual.brechas.map(b=>`<li style="color:#E74C3C;"><span style="color:#333;">${b}</span></li>`).join('')+'</ul>' : ''}
-${cual.citas.length ? subTitle('Citas destacadas')+'<div style="margin-top:6pt;">'+cual.citas.slice(0,6).map(c=>`<div style="border-left:4pt solid #7B4FA6;background:#F8F5FF;padding:8pt 12pt;margin-bottom:8pt;border-radius:0 4pt 4pt 0;"><p style="font-style:italic;font-size:9pt;margin:0 0 4pt;">"${c.texto}"</p><p style="font-size:8pt;color:#888;margin:0;">— ${c.tema}</p></div>`).join('')+'</div>' : ''}` : '';
-
-  // ── S8 Hallazgos + Recomendaciones ──
-  const s8 = `${secTitle(8,'Hallazgos Clave y Recomendaciones')}
-${subTitle('Hallazgos clave')}
-<ul style="font-size:9pt;line-height:1.9;">
-  ${D.hallazgos.map(h=>`<li>${h}</li>`).join('')}
-</ul>
-${subTitle('Recomendaciones estratégicas')}
-<table style="border-collapse:collapse;width:100%;font-size:9pt;">
-  <thead><tr>
-    <th style="background:#1264A3;color:#fff;padding:6pt 10pt;text-align:left;">Área</th>
-    <th style="background:#1264A3;color:#fff;padding:6pt 10pt;text-align:center;">Prioridad</th>
-    <th style="background:#1264A3;color:#fff;padding:6pt 10pt;text-align:center;">Impacto</th>
-    <th style="background:#1264A3;color:#fff;padding:6pt 10pt;">Acción recomendada</th>
-  </tr></thead>
-  <tbody>
-    ${D.recomendaciones.map((r,i)=>`<tr style="background:${i%2?'#FAFAFA':'#fff'};">
-      <td style="padding:6pt 10pt;font-weight:bold;">${r.area}</td>
-      <td style="text-align:center;padding:6pt 10pt;">${badge(r.prioridad,r.prioridad==='Alta'?'#B71C1C':r.prioridad==='Media'?'#7B6200':'#1B5E20',r.prioridad==='Alta'?'#FFEBEE':r.prioridad==='Media'?'#FFF9C4':'#E8F5E9')}</td>
-      <td style="text-align:center;padding:6pt 10pt;color:#666;">${r.impacto}</td>
-      <td style="padding:6pt 10pt;font-size:8.5pt;">${r.accion}</td>
-    </tr>`).join('')}
-  </tbody>
-</table>`;
-
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<style>
-@page{size:A4;margin:2cm 2.5cm;}
-body{font-family:Arial,sans-serif;color:#1E2A44;margin:0;font-size:10pt;}
-.cover{page-break-after:always;border-left:10pt solid #1264A3;padding:50pt 30pt;min-height:240pt;}
-.cover-title{font-size:26pt;font-weight:900;color:#1E2A44;margin-bottom:8pt;}
-.cover-co{font-size:18pt;color:#1264A3;font-weight:bold;margin-bottom:6pt;}
-.cover-per{font-size:12pt;color:#666;margin-bottom:4pt;}
-.cover-kpi{display:inline-block;background:#1264A3;color:#fff;padding:12pt 18pt;border-radius:4pt;margin-top:20pt;text-align:center;}
-.cover-kpi-val{font-size:30pt;font-weight:900;display:block;}
-.cover-kpi-lbl{font-size:9pt;}
-.cover-footer{margin-top:80pt;font-size:9pt;color:#999;border-top:1pt solid #E0E0E0;padding-top:8pt;}
-h2{page-break-before:auto;}
-</style></head><body>
-<div class="cover">
-  <div class="cover-title">${isClima?'CLIMA ORGANIZACIONAL':'EVALUACIÓN DE DESEMPEÑO'}</div>
-  <div class="cover-co">${p.empresa}</div>
-  <div class="cover-per">${p.nombre} · ${p.periodo||today()}</div>
-  <div class="cover-per">${resp.length} participantes · ${items.length} ${isClima?'dimensiones':'competencias'} · Escala 1–${escala}</div>
-  <div class="cover-kpi">
-    <span class="cover-kpi-val">${D.resumen.indiceGlobal}%</span>
-    <span class="cover-kpi-lbl">${D.resumen.clasificacion}</span>
-  </div>
-  <div class="cover-footer">IntraRHecursos · Sistema de Evaluaciones · Generado: ${today()}</div>
-</div>
-${s1}${s2}${s3}${s4}${s5}${s6}${s7}${s8}
-<div style="margin-top:30pt;text-align:center;font-size:8pt;color:#999;border-top:1pt solid #E0E0E0;padding-top:8pt;">IntraRHecursos · ${p.empresa} · ${today()}</div>
-</body></html>`;
-
-  const blob = new Blob([html], {type:'application/msword;charset=utf-8;'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'IntraRH_'+p.empresa.replace(/\s+/g,'_')+'_'+today()+'.doc';
-  a.click();
-  showToast('✅ Informe Word generado (8 secciones)','success');
-}
   const dimStats=getDimStats(items,resp,isClima,escala);
   const scores=resp.map(r=>r.score??calculateScore(r,p));
   const avgScore=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
@@ -4238,35 +3558,7 @@ async function exportPPTXProj(p, resp, isClima, items, escala) {
       }
     }
 
-    // ════════ SLIDE 9 — ANÁLISIS CUALITATIVO ════════
-    {
-      const cual = procesarCualitativo(resp, items, isClima);
-      if (cual.total > 0) {
-        const s = lightSlide('Análisis Cualitativo', cual.total + ' respuestas abiertas · Sentimiento: ' + cual.sentimientoGlobal.positivo + '% positivo · ' + cual.sentimientoGlobal.negativo + '% negativo');
-        const sg = cual.sentimientoGlobal;
-        // Barras de sentimiento
-        ['Positivo','Neutral','Negativo'].forEach((lbl,i)=>{
-          const pct2=[sg.positivo,sg.neutral,sg.negativo][i];
-          const clrS=[PC.green,PC.yellow,PC.red][i];
-          s.addShape(pres.ShapeType.roundRect,{x:mg+i*4.1,y:1.0,w:3.8,h:1.3,fill:{color:clrS},rectRadius:0.06});
-          s.addText(pct2+'%',{x:mg+i*4.1,y:1.05,w:3.8,h:0.7,fontSize:28,bold:true,color:PC.white,fontFace:'Calibri',align:'center'});
-          s.addText(lbl,{x:mg+i*4.1,y:1.75,w:3.8,h:0.4,fontSize:10,color:PC.white,fontFace:'Calibri',align:'center'});
-        });
-        // Temas
-        s.addText('Temas más frecuentes:', {x:mg,y:2.5,w:W-mg*2,h:0.35,fontSize:11,bold:true,color:PC.navy,fontFace:'Calibri'});
-        const bMaxC=7.0, rH2=0.52;
-        cual.temas.slice(0,7).forEach((t,i)=>{
-          const clrT=t.sentimiento.positivo>=50?PC.green:t.sentimiento.negativo>=40?PC.red:PC.yellow;
-          hBar(s, mg, 2.95+i*rH2, t.tema, t.pct, bMaxC, rH2);
-        });
-        // Cita
-        if(cual.citas[0]){
-          s.addShape(pres.ShapeType.roundRect,{x:mg,y:H-1.4,w:W-mg*2,h:0.95,fill:{color:PC.gray},rectRadius:0.06});
-          s.addShape(pres.ShapeType.rect,{x:mg,y:H-1.4,w:0.12,h:0.95,fill:{color:PC.purple}});
-          s.addText('"'+cual.citas[0].texto.substring(0,110)+'"',{x:mg+0.2,y:H-1.35,w:W-mg*2-0.3,h:0.85,fontSize:9,italic:true,color:PC.dark,fontFace:'Calibri',valign:'middle'});
-        }
-      }
-    }
+    // ════════ SLIDE 9 — HALLAZGOS CLAVE ════════
     {
       const s = lightSlide('Hallazgos Clave', 'Factores impulsores y de riesgo identificados');
       const sortedD = [...dimStats].sort((a,b)=>b.pct-a.pct);
@@ -5508,293 +4800,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   patchPDF();
 })();
-
-// ══════════════════════════════════════════════════════════════════
-// ANÁLISIS CUALITATIVO — Motor de procesamiento de respuestas abiertas
-// ══════════════════════════════════════════════════════════════════
-
-const CUAL_DIMENSIONES = {
-  liderazgo:     ['jefe','supervisor','lider','líder','gerente','directivo','mando','jefatura','dirección','autoridad','coordinador'],
-  comunicacion:  ['comunicación','comunicar','información','informar','mensaje','reunión','reuniones','canal','transparencia','claridad','avisar'],
-  cultura:       ['cultura','valores','misión','visión','ambiente','clima','compañerismo','trabajo en equipo','colaboración','diversidad','respeto','ética'],
-  compensacion:  ['salario','sueldo','pago','beneficio','compensación','bono','incentivo','remuneración','aumento','prestación','seguro'],
-  bienestar:     ['bienestar','salud','estrés','carga','agotamiento','burnout','equilibrio','flexibilidad','horario','vacaciones','descanso','familia'],
-  desarrollo:    ['capacitación','formación','crecimiento','aprendizaje','desarrollo','ascenso','carrera','oportunidad','habilidades','entrenamiento'],
-  infraestructura:['instalaciones','oficina','equipo','herramienta','tecnología','espacio','ergonomía','limpieza','recursos','material','sistema'],
-  procesos:      ['proceso','procedimiento','burocracia','eficiencia','organización','gestión','protocolo','flujo','tarea','objetivo','meta'],
-};
-
-const CUAL_TEMAS = {
-  'Liderazgo directo':       ['jefe','supervisor','lider','mando'],
-  'Comunicación interna':    ['comunicación','comunicar','información','canal'],
-  'Trabajo en equipo':       ['equipo','colaboración','compañerismo','trabajo en equipo'],
-  'Carga laboral':           ['carga','estrés','trabajo','presión','tiempo','horas'],
-  'Compensación':            ['salario','sueldo','pago','bono','aumento'],
-  'Beneficios':              ['beneficio','prestación','seguro','vacaciones'],
-  'Ambiente físico':         ['instalaciones','oficina','espacio','limpieza','equipo'],
-  'Capacitación':            ['capacitación','formación','aprendizaje','desarrollo'],
-  'Reconocimiento':          ['reconocimiento','reconocer','valorar','apreciar'],
-  'Cultura organizacional':  ['cultura','valores','ética','respeto','diversidad'],
-  'Tecnología/Herramientas': ['sistema','herramienta','tecnología','computadora'],
-  'Procesos internos':       ['proceso','procedimiento','burocracia','eficiencia'],
-  'Bienestar':               ['bienestar','salud','equilibrio','flexibilidad'],
-  'Clima laboral':           ['clima','ambiente','relación','convivencia'],
-};
-
-const SENTIMIENTO_POS = ['bien','excelente','bueno','buena','satisfecho','satisfecha','positivo','positiva','mejor','increíble','gracias','aprecio','valoro','disfruto','feliz','cómodo','cómoda','orgulloso','orgullosa','motivado','motivada','contento','contenta','genial','correcto','correcta','adecuado','adecuada','agradable','eficiente','profesional','apoyo','apoya','respeto','respeta','transparencia','claridad'];
-const SENTIMIENTO_NEG = ['mal','malo','mala','problema','falta','falta de','no hay','deficiente','negativo','negativa','poco','poca','carece','necesita','mejorar','insatisfecho','insatisfecha','difícil','complicado','frustrante','molesto','molesta','exceso','demasiado','presión','sobrecarga','injusto','injusta','injusticia','inequidad','desorganizado','desorganizada','confuso','confusa','lento','lenta','burocracia','falla','fallas'];
-
-function analizarSentimiento(texto) {
-  const t = texto.toLowerCase();
-  let pos = 0, neg = 0;
-  SENTIMIENTO_POS.forEach(w => { if (t.includes(w)) pos++; });
-  SENTIMIENTO_NEG.forEach(w => { if (t.includes(w)) neg++; });
-  if (pos > neg) return 'positivo';
-  if (neg > pos) return 'negativo';
-  return 'neutral';
-}
-
-function asignarDimension(texto) {
-  const t = texto.toLowerCase();
-  let best = 'cultura', bestScore = 0;
-  Object.entries(CUAL_DIMENSIONES).forEach(([dim, words]) => {
-    const score = words.filter(w => t.includes(w)).length;
-    if (score > bestScore) { bestScore = score; best = dim; }
-  });
-  return best;
-}
-
-function asignarTema(texto) {
-  const t = texto.toLowerCase();
-  let best = 'Clima laboral', bestScore = 0;
-  Object.entries(CUAL_TEMAS).forEach(([tema, words]) => {
-    const score = words.filter(w => t.includes(w)).length;
-    if (score > bestScore) { bestScore = score; best = tema; }
-  });
-  return best;
-}
-
-function procesarCualitativo(resp, items, isClima) {
-  // 1. Recolectar todas las respuestas abiertas
-  const raw = [];
-  resp.forEach(r => {
-    items.forEach((d, di) => {
-      (d.preguntas || []).forEach((preg, pi) => {
-        const tipo = typeof preg === 'object' ? (preg.tipo || 'escala') : 'escala';
-        if (tipo === 'abierta' || tipo === 'corta') {
-          const v = isClima ? r.dimResp?.['dim_' + di + '_' + pi] : r.compResp?.['comp_' + di + '_' + pi];
-          if (v && typeof v === 'string' && v.trim().length > 4) {
-            raw.push({ texto: v.trim(), fuente: d.titulo });
-          }
-        }
-      });
-    });
-    // Campos cualitativos adicionales
-    [['comentarios','General'],['fortalezas','Fortalezas'],['oportunidades','Oportunidades'],['feedback','Retroalimentación']].forEach(([campo, fuente]) => {
-      const v = r[campo];
-      if (v && typeof v === 'string' && v.trim().length > 4) raw.push({ texto: v.trim(), fuente });
-    });
-  });
-
-  // 2. Limpiar: vacíos, normalizar, deduplicar
-  const limpio = raw
-    .filter(r => r.texto && r.texto.trim().length > 4)
-    .map(r => ({ ...r, texto: r.texto.trim().replace(/\s+/g, ' ') }))
-    .filter((r, i, a) => a.findIndex(x => x.texto.toLowerCase() === r.texto.toLowerCase()) === i);
-
-  if (!limpio.length) return { temas: [], fortalezas: [], brechas: [], citas: [], total: 0 };
-
-  // 3. Clasificar cada respuesta
-  const clasificadas = limpio.map(r => ({
-    ...r,
-    dimension: asignarDimension(r.texto),
-    tema: asignarTema(r.texto),
-    sentimiento: analizarSentimiento(r.texto),
-  }));
-
-  // 4. Agregar por tema
-  const temasMap = {};
-  clasificadas.forEach(r => {
-    if (!temasMap[r.tema]) temasMap[r.tema] = { tema: r.tema, frecuencia: 0, sentimiento: { positivo: 0, neutral: 0, negativo: 0 }, textos: [] };
-    temasMap[r.tema].frecuencia++;
-    temasMap[r.tema].sentimiento[r.sentimiento]++;
-    temasMap[r.tema].textos.push(r.texto);
-  });
-
-  const temas = Object.values(temasMap)
-    .sort((a, b) => b.frecuencia - a.frecuencia)
-    .map(t => ({
-      tema: t.tema,
-      frecuencia: t.frecuencia,
-      pct: Math.round((t.frecuencia / clasificadas.length) * 100),
-      sentimiento: {
-        positivo: Math.round((t.sentimiento.positivo / t.frecuencia) * 100),
-        neutral:  Math.round((t.sentimiento.neutral  / t.frecuencia) * 100),
-        negativo: Math.round((t.sentimiento.negativo / t.frecuencia) * 100),
-      },
-      citas: t.textos.slice(0, 3),
-    }));
-
-  // 5. Top fortalezas y brechas
-  const fortalezas = temas
-    .filter(t => t.sentimiento.positivo >= 50)
-    .slice(0, 5)
-    .map(t => t.tema);
-
-  const brechas = temas
-    .filter(t => t.sentimiento.negativo >= 40)
-    .slice(0, 5)
-    .map(t => t.tema);
-
-  // 6. Citas destacadas (1 por sentimiento por tema top)
-  const citas = [];
-  temas.slice(0, 5).forEach(t => {
-    if (t.citas[0]) citas.push({ tema: t.tema, texto: t.citas[0] });
-  });
-
-  // 7. Sentimiento global
-  const totPos = clasificadas.filter(r => r.sentimiento === 'positivo').length;
-  const totNeg = clasificadas.filter(r => r.sentimiento === 'negativo').length;
-  const totNeu = clasificadas.filter(r => r.sentimiento === 'neutral').length;
-
-  return {
-    temas,
-    fortalezas,
-    brechas,
-    citas,
-    total: clasificadas.length,
-    sentimientoGlobal: {
-      positivo: Math.round((totPos / clasificadas.length) * 100),
-      neutral:  Math.round((totNeu / clasificadas.length) * 100),
-      negativo: Math.round((totNeg / clasificadas.length) * 100),
-    },
-  };
-}
-
-// ══════════════════════════════════════════════════════════════════
-// ESTRUCTURA UNIFICADA DEL INFORME (8 secciones estándar)
-// Usada por PDF, Word, PPTX, XLSX y panel de análisis
-// ══════════════════════════════════════════════════════════════════
-
-function buildInformeData(p, resp, isClima, items, escala) {
-  const dimStats   = getDimStats(items, resp, isClima, escala);
-  const scores     = resp.map(r => r.score ?? calculateScore(r, p));
-  const avgScore   = scores.length ? (scores.reduce((a,b) => a+b, 0) / scores.length) : 0;
-  const pctGlobal  = Math.round((avgScore / escala) * 100);
-
-  // Desviación estándar por dimensión
-  const dimStatsExt = items.map((d, di) => {
-    const vals = [];
-    resp.forEach(r => d.preguntas.forEach((_, pi) => {
-      const v = isClima ? r.dimResp?.['dim_'+di+'_'+pi] : r.compResp?.['comp_'+di+'_'+pi];
-      if (typeof v === 'number') vals.push(v);
-    }));
-    const avg = vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : 0;
-    const std = vals.length > 1 ? Math.sqrt(vals.reduce((a,v) => a + Math.pow(v-avg, 2), 0) / vals.length) : 0;
-    const pct = Math.round((avg / escala) * 100);
-    return {
-      titulo:   d.titulo,
-      avg:      avg,
-      pct:      pct,
-      std:      parseFloat(std.toFixed(2)),
-      n:        vals.length,
-      clasif:   pct >= 80 ? 'Fortaleza' : pct >= 60 ? 'Aceptable' : 'Brecha',
-    };
-  });
-
-  // eNPS
-  const promotores  = resp.filter(r => r.recomienda === 'Sí, definitivamente').length;
-  const detractores = resp.filter(r => r.recomienda === 'No').length;
-  const eNPS        = resp.length ? Math.round((promotores - detractores) / resp.length * 100) : null;
-
-  // Segmentos
-  const depts    = [...new Set(resp.map(r => r.dept || r.ev_dept).filter(Boolean))];
-  const empresas = [...new Set(resp.map(r => r.empresa || r.ev_empresa).filter(Boolean))];
-  const cargos   = [...new Set(resp.map(r => r.nivel || r.cargo || r.ev_cargo).filter(Boolean))];
-
-  const segArea = depts.map(d => {
-    const dd = resp.filter(r => (r.dept || r.ev_dept) === d);
-    const sc = dd.map(r => r.score ?? calculateScore(r, p));
-    const avg = sc.length ? sc.reduce((a,b) => a+b, 0) / sc.length : 0;
-    return { label: d, n: dd.length, pct: Math.round(avg), clasif: avg >= 80 ? 'Fortaleza' : avg >= 60 ? 'Aceptable' : 'Brecha' };
-  });
-
-  const segEmpresa = empresas.map(e => {
-    const dd = resp.filter(r => (r.empresa || r.ev_empresa) === e);
-    const sc = dd.map(r => r.score ?? calculateScore(r, p));
-    const avg = sc.length ? sc.reduce((a,b) => a+b, 0) / sc.length : 0;
-    return { label: e, n: dd.length, pct: Math.round(avg) };
-  });
-
-  const segCargo = cargos.map(c => {
-    const dd = resp.filter(r => (r.nivel || r.cargo || r.ev_cargo) === c);
-    const sc = dd.map(r => r.score ?? calculateScore(r, p));
-    const avg = sc.length ? sc.reduce((a,b) => a+b, 0) / sc.length : 0;
-    return { label: c, n: dd.length, pct: Math.round(avg) };
-  });
-
-  // Cualitativo
-  const cual = procesarCualitativo(resp, items, isClima);
-
-  // Clasificación global
-  const clasificacionGlobal = isClima
-    ? (pctGlobal >= 85 ? 'Clima Favorable' : pctGlobal >= 70 ? 'Clima Aceptable' : pctGlobal >= 50 ? 'Clima en Riesgo' : 'Clima Crítico')
-    : (pctGlobal >= 90 ? 'Sobresaliente' : pctGlobal >= 75 ? 'Supera expectativas' : pctGlobal >= 55 ? 'Cumple expectativas' : pctGlobal >= 35 ? 'Por debajo' : 'Insuficiente');
-
-  // Hallazgos clave
-  const sorted    = [...dimStatsExt].sort((a,b) => b.pct - a.pct);
-  const top3      = sorted.slice(0, 3);
-  const bot3      = sorted.slice(-3).reverse();
-  const hallazgos = [
-    `Índice general: ${pctGlobal}% — ${clasificacionGlobal} (${avgScore.toFixed(1)}/${escala})`,
-    `Mayor fortaleza: ${top3[0]?.titulo} con ${top3[0]?.pct}%`,
-    top3[1] ? `Segunda fortaleza: ${top3[1]?.titulo} con ${top3[1]?.pct}%` : null,
-    `Principal brecha: ${bot3[0]?.titulo} con ${bot3[0]?.pct}%`,
-    bot3[1] ? `Segunda brecha: ${bot3[1]?.titulo} con ${bot3[1]?.pct}%` : null,
-    eNPS !== null ? `eNPS: ${eNPS} (${promotores} promotores, ${detractores} detractores)` : null,
-    segArea.length > 1 ? `Área con mayor score: ${[...segArea].sort((a,b)=>b.pct-a.pct)[0]?.label} (${[...segArea].sort((a,b)=>b.pct-a.pct)[0]?.pct}%)` : null,
-    segArea.length > 1 ? `Área con menor score: ${[...segArea].sort((a,b)=>a.pct-b.pct)[0]?.label} (${[...segArea].sort((a,b)=>a.pct-b.pct)[0]?.pct}%)` : null,
-    cual.fortalezas.length ? `Tema cualitativo positivo más frecuente: ${cual.fortalezas[0]}` : null,
-    cual.brechas.length    ? `Tema cualitativo negativo más frecuente: ${cual.brechas[0]}`    : null,
-  ].filter(Boolean);
-
-  // Recomendaciones basadas en brechas
-  const recomendaciones = bot3.map(d => ({
-    area:      d.titulo,
-    prioridad: d.pct < 50 ? 'Alta' : d.pct < 65 ? 'Media' : 'Baja',
-    accion:    `Diseñar plan de intervención en "${d.titulo}" (${d.pct}%). Implementar talleres, seguimiento mensual y métricas de avance.`,
-    impacto:   d.pct < 50 ? 'Alto' : 'Medio',
-  }));
-  if (cual.brechas.length) {
-    cual.brechas.slice(0, 2).forEach(b => {
-      if (!recomendaciones.find(r => r.area === b)) {
-        recomendaciones.push({ area: b, prioridad: 'Media', accion: `Atender el tema "${b}" identificado en el análisis cualitativo. Revisar procesos y facilitar espacios de retroalimentación.`, impacto: 'Medio' });
-      }
-    });
-  }
-
-  return {
-    // Metadatos
-    proyecto:   { nombre: p.nombre, empresa: p.empresa, tipo: isClima ? 'Clima Organizacional' : 'Evaluación de Desempeño', periodo: p.periodo || '—', escala, logo: p.logo || '' },
-    // S1 — Resumen ejecutivo
-    resumen:    { indiceGlobal: pctGlobal, clasificacion: clasificacionGlobal, promedio: avgScore.toFixed(2), escala, totalRespuestas: resp.length, eNPS, promotores, detractores, neutrales: resp.length - promotores - detractores },
-    // S2 — Metodología
-    metodologia:{ tipo: isClima ? 'Encuesta de Clima Organizacional' : 'Evaluación 360° de Desempeño', escala: `1–${escala}`, totalParticipantes: resp.length, totalDimensiones: items.length, periodo: p.periodo || '—', modalidad: 'Digital / Anónima' },
-    // S3 — Perfil
-    perfil:     { totalParticipantes: resp.length, areas: depts.length, empresas: empresas.length, cargos: cargos.length, distribucionArea: segArea, distribucionEmpresa: segEmpresa, distribucionCargo: segCargo },
-    // S4 — Resultados generales
-    generales:  { indiceGlobal: pctGlobal, clasificacion: clasificacionGlobal, avgScore: avgScore.toFixed(2), escala, eNPS, promotores, detractores },
-    // S5 — Por dimensión
-    dimensiones: dimStatsExt,
-    // S6 — Por segmento
-    segmentos:  { area: segArea, empresa: segEmpresa, cargo: segCargo },
-    // S7 — Cualitativo
-    cualitativo: cual,
-    // S8 — Hallazgos + Recomendaciones
-    hallazgos,
-    recomendaciones,
-  };
-}
 
 // ── EMAIL TEST ──
 async function probarEmail() {
