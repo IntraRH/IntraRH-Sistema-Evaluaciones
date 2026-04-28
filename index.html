@@ -2721,176 +2721,185 @@ function exportIAText() {
 
 
 // ══════════════════════════════════════════
+// UTILIDADES DE COLOR PARA INFORMES
+// ══════════════════════════════════════════
+function getProjectColors(p) {
+  return {
+    primary:   [18,100,163],
+    secondary: [123,79,166],
+    accent:    [26,167,216],
+    dark:      [30,42,68],
+    white:     [255,255,255],
+    light:     [245,248,252],
+    muted:     [120,130,150],
+  };
+}
+function scoreColor(pct) {
+  if(pct>=80) return [39,174,96];
+  if(pct>=60) return [26,167,216];
+  if(pct>=40) return [243,156,18];
+  return [231,76,60];
+}
+function scoreColorHex(pct) {
+  if(pct>=80) return '27AE60';
+  if(pct>=60) return '1AA7D8';
+  if(pct>=40) return 'F39C12';
+  return 'E74C3C';
+}
+function getDimStats(items, resp, isClima, escala) {
+  return items.map((d,di)=>{
+    const vals=[];
+    resp.forEach(r=>d.preguntas.forEach((_,pi)=>{
+      const v=isClima?r.dimResp?.['dim_'+di+'_'+pi]:r.compResp?.['comp_'+di+'_'+pi];
+      if(typeof v==='number') vals.push(v);
+    }));
+    const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length):0;
+    return {titulo:d.titulo, avg, pct:Math.round((avg/escala)*100), n:vals.length};
+  });
+}
+function getInfOrient() {
+  return document.querySelector('input[name="inf-orient"]:checked')?.value||'landscape';
+}
+
+// ══════════════════════════════════════════
 // TAB INFORMES (Generador de reportes)
 // ══════════════════════════════════════════
 function renderTabInformes(p, resp, escala) {
+  const scores=resp.map(r=>r.score??calculateScore(r,p));
+  const avgScore=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
+  const depts=[...new Set(resp.map(r=>r.dept||r.ev_dept).filter(Boolean))];
   return `
-  <div class="nota-blue">📄 Genera informes profesionales automáticos listos para presentar al cliente.</div>
+  <div class="nota-blue">📄 Los informes se generan con los colores de IntraRHecursos. Elige orientación antes de exportar.</div>
+  <div class="g2" style="margin-bottom:1rem;">
+    <div class="card"><div class="card-header"><span class="card-title">🖨️ Orientación del informe</span></div>
+    <div class="card-body">
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;padding:.5rem .9rem;border:1.5px solid var(--border);border-radius:var(--rs);font-size:.8rem;font-weight:700;">
+          <input type="radio" name="inf-orient" value="landscape" checked style="accent-color:var(--purple)"> 🖥️ Horizontal (16:9)
+        </label>
+        <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;padding:.5rem .9rem;border:1.5px solid var(--border);border-radius:var(--rs);font-size:.8rem;font-weight:700;">
+          <input type="radio" name="inf-orient" value="portrait" style="accent-color:var(--purple)"> 📄 Vertical (A4)
+        </label>
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.5rem;line-height:1.5;">
+        <b>Horizontal:</b> estilo presentación ejecutiva (como el Termómetro de Conformatic) ·
+        <b>Vertical:</b> informe A4 formal para imprimir
+      </div>
+    </div></div>
+    <div class="card"><div class="card-header"><span class="card-title">📊 Resumen del proyecto</span></div>
+    <div class="card-body">
+      <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.7rem;">
+        ${p.logo?`<img src="${p.logo}" style="height:34px;max-width:80px;object-fit:contain;border:1px solid var(--border);border-radius:var(--rs);padding:3px;" onerror="this.style.display='none'">`:''}
+        <div><div style="font-weight:900;">${p.empresa}</div><div style="font-size:.75rem;color:var(--muted);">${p.nombre} · ${p.periodo||'—'}</div></div>
+      </div>
+      <div style="display:flex;gap:1.2rem;flex-wrap:wrap;">
+        <div><div style="font-size:.6rem;color:var(--muted);font-weight:800;text-transform:uppercase;">Respuestas</div><div style="font-size:1.4rem;font-weight:900;color:var(--purple);">${resp.length}</div></div>
+        <div><div style="font-size:.6rem;color:var(--muted);font-weight:800;text-transform:uppercase;">Score</div><div style="font-size:1.4rem;font-weight:900;color:var(--yellow);">${avgScore}%</div></div>
+        <div><div style="font-size:.6rem;color:var(--muted);font-weight:800;text-transform:uppercase;">Depts.</div><div style="font-size:1.4rem;font-weight:900;color:var(--blue);">${depts.length}</div></div>
+        <div><div style="font-size:.6rem;color:var(--muted);font-weight:800;text-transform:uppercase;">Escala</div><div style="font-size:1.4rem;font-weight:900;color:var(--green);">1–${escala}</div></div>
+      </div>
+    </div></div>
+  </div>
   <div class="g3" style="margin-bottom:1.2rem;">
-    <div class="card" style="cursor:pointer;" onclick="exportAnalisis('pdf')">
-      <div class="card-body" style="text-align:center;padding:1.8rem;">
-        <div style="font-size:2.2rem;margin-bottom:.5rem;">📕</div>
-        <div style="font-weight:900;font-size:.95rem;">Informe Ejecutivo PDF</div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">Portada + KPIs + Gráficos + Análisis</div>
+    <div class="card" style="cursor:pointer;transition:all .15s;overflow:hidden;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''" onclick="exportAnalisis('pdf')">
+      <div style="height:5px;background:linear-gradient(90deg,#DC2626,#EF4444);"></div>
+      <div class="card-body" style="text-align:center;padding:1.5rem .8rem;">
+        <div style="font-size:2.4rem;margin-bottom:.5rem;">📕</div>
+        <div style="font-weight:900;font-size:.9rem;margin-bottom:.3rem;">PDF Ejecutivo</div>
+        <div style="font-size:.68rem;color:var(--muted);line-height:1.5;">Portada · KPIs · Barras · Barra lateral azul</div>
       </div>
     </div>
-    <div class="card" style="cursor:pointer;" onclick="exportAnalisis('pptx')">
-      <div class="card-body" style="text-align:center;padding:1.8rem;">
-        <div style="font-size:2.2rem;margin-bottom:.5rem;">📑</div>
-        <div style="font-weight:900;font-size:.95rem;">Presentación PowerPoint</div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">Slides profesionalizadas para cliente</div>
+    <div class="card" style="cursor:pointer;transition:all .15s;overflow:hidden;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''" onclick="exportAnalisis('pptx')">
+      <div style="height:5px;background:linear-gradient(90deg,#D24726,#E05C35);"></div>
+      <div class="card-body" style="text-align:center;padding:1.5rem .8rem;">
+        <div style="font-size:2.4rem;margin-bottom:.5rem;">📑</div>
+        <div style="font-weight:900;font-size:.9rem;margin-bottom:.3rem;">PowerPoint</div>
+        <div style="font-size:.68rem;color:var(--muted);line-height:1.5;">6 slides · Estilo Conformatic · Barra lateral</div>
       </div>
     </div>
-    <div class="card" style="cursor:pointer;" onclick="exportAnalisis('word')">
-      <div class="card-body" style="text-align:center;padding:1.8rem;">
-        <div style="font-size:2.2rem;margin-bottom:.5rem;">📘</div>
-        <div style="font-weight:900;font-size:.95rem;">Informe Word</div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">Documento editable con tablas</div>
+    <div class="card" style="cursor:pointer;transition:all .15s;overflow:hidden;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''" onclick="exportAnalisis('word')">
+      <div style="height:5px;background:linear-gradient(90deg,#2B579A,#3B6FBB);"></div>
+      <div class="card-body" style="text-align:center;padding:1.5rem .8rem;">
+        <div style="font-size:2.4rem;margin-bottom:.5rem;">📘</div>
+        <div style="font-weight:900;font-size:.9rem;margin-bottom:.3rem;">Word</div>
+        <div style="font-size:.68rem;color:var(--muted);line-height:1.5;">Portada · Tablas con barras de color</div>
       </div>
     </div>
-    <div class="card" style="cursor:pointer;" onclick="exportAnalisis('xlsx')">
-      <div class="card-body" style="text-align:center;padding:1.8rem;">
-        <div style="font-size:2.2rem;margin-bottom:.5rem;">📊</div>
-        <div style="font-weight:900;font-size:.95rem;">Excel Completo</div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">Datos crudos + análisis + KPIs</div>
+    <div class="card" style="cursor:pointer;transition:all .15s;overflow:hidden;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''" onclick="exportAnalisis('xlsx')">
+      <div style="height:5px;background:linear-gradient(90deg,#1D6F42,#2A8F55);"></div>
+      <div class="card-body" style="text-align:center;padding:1.5rem .8rem;">
+        <div style="font-size:2.4rem;margin-bottom:.5rem;">📊</div>
+        <div style="font-weight:900;font-size:.9rem;margin-bottom:.3rem;">Excel</div>
+        <div style="font-size:.68rem;color:var(--muted);line-height:1.5;">Resumen · Dimensiones · Datos completos</div>
       </div>
     </div>
-    <div class="card" style="cursor:pointer;" onclick="exportAnalisis('csv')">
-      <div class="card-body" style="text-align:center;padding:1.8rem;">
-        <div style="font-size:2.2rem;margin-bottom:.5rem;">📄</div>
-        <div style="font-weight:900;font-size:.95rem;">CSV de datos</div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">Para análisis en herramientas externas</div>
+    <div class="card" style="cursor:pointer;transition:all .15s;overflow:hidden;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''" onclick="exportAnalisis('csv')">
+      <div style="height:5px;background:linear-gradient(90deg,#217346,#2E9A5D);"></div>
+      <div class="card-body" style="text-align:center;padding:1.5rem .8rem;">
+        <div style="font-size:2.4rem;margin-bottom:.5rem;">📄</div>
+        <div style="font-weight:900;font-size:.9rem;margin-bottom:.3rem;">CSV</div>
+        <div style="font-size:.68rem;color:var(--muted);line-height:1.5;">Datos crudos para análisis externo</div>
       </div>
     </div>
-    <div class="card" style="cursor:pointer;" onclick="generarIA('global')">
-      <div class="card-body" style="text-align:center;padding:1.8rem;">
-        <div style="font-size:2.2rem;margin-bottom:.5rem;">🤖</div>
-        <div style="font-weight:900;font-size:.95rem;">Análisis IA</div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">Interpretación automática con Claude</div>
+    <div class="card" style="cursor:pointer;transition:all .15s;overflow:hidden;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''" onclick="goProjTab('analisis',document.getElementById('nav-proj-analisis'))">
+      <div style="height:5px;background:linear-gradient(90deg,var(--purple),var(--purple-l));"></div>
+      <div class="card-body" style="text-align:center;padding:1.5rem .8rem;">
+        <div style="font-size:2.4rem;margin-bottom:.5rem;">🤖</div>
+        <div style="font-weight:900;font-size:.9rem;margin-bottom:.3rem;">Análisis IA</div>
+        <div style="font-size:.68rem;color:var(--muted);line-height:1.5;">Resumen · Riesgos · Recomendaciones</div>
       </div>
     </div>
   </div>
   <div class="card">
-    <div class="card-header"><span class="card-title">📋 Informe individual por colaborador</span></div>
+    <div class="card-header"><span class="card-title">👤 Informe individual</span></div>
     <div class="card-body">
-      <div class="nota">⚠️ Para generar informes individuales, selecciona una respuesta en la pestaña Resultados.</div>
       ${resp.length?`
-      <select class="fi" id="sel-resp-ind" style="max-width:360px;margin-bottom:.8rem;">
-        <option value="">Seleccionar colaborador…</option>
-        ${resp.map(r=>`<option value="${r.id}">${r.nombre||r.ev_nombre||'Anónimo'} · ${fmtDate(r.fecha)}</option>`).join('')}
-      </select>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" onclick="exportRespIndividual('pdf')">📕 PDF Individual</button>
-        <button class="btn btn-ghost btn-sm" onclick="exportRespIndividual('word')">📘 Word Individual</button>
-      </div>`:'<div style="color:var(--muted);">Sin respuestas para generar informes individuales.</div>'}
+      <div class="fr" style="align-items:flex-end;gap:.6rem;">
+        <div class="fg" style="margin:0;flex:1;">
+          <label class="fl">Colaborador</label>
+          <select class="fi" id="sel-resp-ind">
+            <option value="">Seleccionar…</option>
+            ${resp.map(r=>`<option value="${r.id}">${r.nombre||r.ev_nombre||'Anónimo'} · ${fmtDate(r.fecha)}</option>`).join('')}
+          </select>
+        </div>
+        <div style="display:flex;gap:.4rem;padding-bottom:.9rem;">
+          <button class="btn btn-primary btn-sm" onclick="exportRespIndividual('pdf')">📕 PDF</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportRespIndividual('word')">📘 Word</button>
+        </div>
+      </div>`:'<div style="color:var(--muted);font-size:.85rem;">Sin respuestas todavía.</div>'}
     </div>
   </div>`;
-}
-
-function exportRespIndividual(fmt) {
-  const id = document.getElementById('sel-resp-ind')?.value;
-  if (!id) { showToast('Selecciona un colaborador','error'); return; }
-  const r = RESPUESTAS.find(x=>x.id===id); if (!r) return;
-  const p = PROYECTOS.find(x=>x.id===r.proyectoId);
-  const escala = parseInt(p?.escala)||5;
-  const score  = r.score??calculateScore(r,p);
-  const clasif = r.clasif||applyCalibration(score,p)?.label;
-  if (fmt==='pdf') exportIndividualPDF(r,p,escala,score,clasif);
-  else exportIndividualWord(r,p,escala,score,clasif);
-}
-
-function exportIndividualPDF(r, p, escala, score, clasif) {
-  try {
-    const {jsPDF} = window.jspdf;
-    const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const W=210,mg=18,PURPLE=[123,79,166];
-    doc.setFillColor(...PURPLE); doc.rect(0,0,W,35,'F');
-    doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont('helvetica','normal');
-    doc.text('IntraRHecursos · Informe Individual',mg,10);
-    doc.setFontSize(18); doc.setFont('helvetica','bold');
-    doc.text('Informe de '+( p?.tipo==='clima'?'Clima':'Desempeño'),mg,22);
-    doc.setFontSize(11); doc.setFont('helvetica','normal');
-    doc.text(p?.empresa+' · '+( p?.periodo||'—'),mg,30);
-    let y=48;
-    doc.setTextColor(45,45,58); doc.setFontSize(12); doc.setFont('helvetica','bold');
-    doc.text('Colaborador: '+(r.nombre||r.ev_nombre||'—'),mg,y); y+=7;
-    doc.setFontSize(9); doc.setFont('helvetica','normal');
-    doc.text('Fecha: '+fmtDate(r.fecha)+'   |   Score: '+score+'%   |   Clasificación: '+clasif,mg,y); y+=12;
-    doc.setFillColor(243,238,249); doc.roundedRect(mg,y,W-mg*2,22,3,3,'F');
-    doc.setFontSize(22); doc.setFont('helvetica','bold'); doc.setTextColor(...PURPLE);
-    doc.text(score+'%',mg+8,y+14);
-    doc.setFontSize(11); doc.setTextColor(45,45,58);
-    doc.text(clasif,mg+30,y+14); y+=32;
-    // Dims
-    const items = p?.tipo==='clima'?(p.dimensiones||DEFAULT_DIMS):(p.competencias||DEFAULT_COMPS);
-    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.text(p?.tipo==='clima'?'Resultados por dimensión:':'Resultados por competencia:',mg,y); y+=7;
-    items.forEach((d,di)=>{
-      const vals=[];
-      if(p?.tipo==='clima') d.preguntas.forEach((_,pi)=>{const v=r.dimResp?.['dim_'+di+'_'+pi];if(v)vals.push(v);});
-      else d.preguntas.forEach((_,pi)=>{const v=r.compResp?.['comp_'+di+'_'+pi];if(v)vals.push(v);});
-      const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length):0;
-      const pct=Math.round((avg/escala)*100);
-      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(45,45,58);
-      doc.text(d.titulo.substring(0,30),mg,y);
-      doc.setFillColor(228,226,238); doc.rect(mg+65,y-4,W-mg*2-68,4,'F');
-      const bClr=pct>=80?[39,174,96]:pct>=60?[58,155,213]:[243,156,18];
-      doc.setFillColor(...bClr); doc.rect(mg+65,y-4,Math.max((W-mg*2-68)*pct/100,.5),4,'F');
-      doc.setFont('helvetica','bold'); doc.setTextColor(...bClr);
-      doc.text(avg.toFixed(1)+'/'+escala,W-mg-2,y,{align:'right'}); y+=8;
-      if(y>270){doc.addPage();y=20;}
-    });
-    doc.setFontSize(7); doc.setTextColor(139,139,160);
-    doc.text('IntraRHecursos · '+today(),mg,287);
-    doc.save('IntraRH_Ind_'+(r.nombre||r.ev_nombre||'colaborador').replace(/ /g,'_')+'_'+today()+'.pdf');
-    showToast('✅ PDF individual generado','success');
-  } catch(e) { showToast('Error PDF: '+e.message,'error'); }
-}
-
-function exportIndividualWord(r, p, escala, score, clasif) {
-  const items = p?.tipo==='clima'?(p.dimensiones||DEFAULT_DIMS):(p.competencias||DEFAULT_COMPS);
-  const rows  = items.map((d,di)=>{
-    const vals=[];
-    if(p?.tipo==='clima') d.preguntas.forEach((_,pi)=>{const v=r.dimResp?.['dim_'+di+'_'+pi];if(v)vals.push(v);});
-    else d.preguntas.forEach((_,pi)=>{const v=r.compResp?.['comp_'+di+'_'+pi];if(v)vals.push(v);});
-    const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):0;
-    return `<tr><td>${d.titulo}</td><td style="text-align:center;">${avg}/${escala}</td><td style="text-align:center;">${Math.round((avg/escala)*100)}%</td></tr>`;
-  }).join('');
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial;font-size:11pt;margin:2cm;}h1{color:#7B4FA6;border-bottom:2pt solid #7B4FA6;padding-bottom:4pt;}h2{color:#2D2D3A;font-size:12pt;}table{border-collapse:collapse;width:100%;margin:10pt 0;}th{background:#7B4FA6;color:#fff;padding:5pt 8pt;font-size:9pt;}td{padding:5pt 8pt;border-bottom:1pt solid #E4E2EE;}</style></head><body><h1>Informe de ${p?.tipo==='clima'?'Clima':'Desempeño'} — ${r.nombre||r.ev_nombre||'—'}</h1><p><b>Empresa:</b> ${p?.empresa} &nbsp;|&nbsp; <b>Período:</b> ${p?.periodo||'—'} &nbsp;|&nbsp; <b>Fecha:</b> ${fmtDate(r.fecha)}</p><h2>Resultado</h2><p><b>Score:</b> ${score}% &nbsp;|&nbsp; <b>Clasificación:</b> ${clasif}</p><h2>${p?.tipo==='clima'?'Dimensiones':'Competencias'}</h2><table><tr><th>Ítem</th><th>Promedio</th><th>%</th></tr>${rows}</table></body></html>`;
-  const blob=new Blob([html],{type:'application/msword'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='IntraRH_Ind_'+(r.nombre||r.ev_nombre||'col').replace(/ /g,'_')+'_'+today()+'.doc'; a.click();
-  showToast('✅ Word individual generado','success');
 }
 
 // ══════════════════════════════════════════
 // EXPORTACIONES (Análisis completo)
 // ══════════════════════════════════════════
 function exportAnalisis(fmt) {
-  const p = PROYECTOS.find(x=>x.id===currentProjectId); if (!p) return;
-  const resp = RESPUESTAS.filter(r=>r.proyectoId===currentProjectId);
-  if (!resp.length) { showToast('No hay respuestas para exportar','error'); return; }
-  const escala = parseInt(p.escala)||5;
-  const isClima = p.tipo==='clima';
-  const items   = isClima?(p.dimensiones||DEFAULT_DIMS):(p.competencias||DEFAULT_COMPS);
-  if      (fmt==='csv')  exportCSVProj(p,resp,isClima,items,escala);
-  else if (fmt==='xlsx') exportXLSXProj(p,resp,isClima,items,escala);
-  else if (fmt==='pdf')  exportPDFProj(p,resp,isClima,items,escala);
-  else if (fmt==='word') exportWordProj(p,resp,isClima,items,escala);
-  else if (fmt==='pptx') exportPPTXProj(p,resp,isClima,items,escala);
+  const p=PROYECTOS.find(x=>x.id===currentProjectId); if(!p) return;
+  const resp=RESPUESTAS.filter(r=>r.proyectoId===currentProjectId);
+  if(!resp.length){showToast('No hay respuestas para exportar','error');return;}
+  const escala=parseInt(p.escala)||5;
+  const isClima=p.tipo==='clima';
+  const items=isClima?(p.dimensiones||DEFAULT_DIMS):(p.competencias||DEFAULT_COMPS);
+  if(fmt==='csv')        exportCSVProj(p,resp,isClima,items,escala);
+  else if(fmt==='xlsx')  exportXLSXProj(p,resp,isClima,items,escala);
+  else if(fmt==='pdf')   exportPDFProj(p,resp,isClima,items,escala);
+  else if(fmt==='word')  exportWordProj(p,resp,isClima,items,escala);
+  else if(fmt==='pptx')  exportPPTXProj(p,resp,isClima,items,escala);
 }
 
 function exportCSVProj(p,resp,isClima,items,escala){
   let headers,rows;
   if(isClima){
     headers=['Fecha','Nombre','Empresa','Departamento','Cargo','Nivel','Antigüedad','Score%','Clasificación','General','Recomienda',...items.map(d=>d.titulo)];
-    rows=resp.map(r=>{const avgs=items.map((d,di)=>{const v=d.preguntas.map((_,pi)=>r.dimResp?.['dim_'+di+'_'+pi]).filter(v=>v);return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'';});const score=r.score??calculateScore(r,p);const clasif=r.clasif||applyCalibration(score,p)?.label;return [r.fecha,r.nombre,r.empresa,r.dept,r.cargo,r.nivel,r.antiguedad,score,clasif,r.general,r.recomienda,...avgs].map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`);});
+    rows=resp.map(r=>{const avgs=items.map((d,di)=>{const v=d.preguntas.map((_,pi)=>r.dimResp?.['dim_'+di+'_'+pi]).filter(v=>typeof v==='number');return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'';});const score=r.score??calculateScore(r,p);const clasif=r.clasif||applyCalibration(score,p)?.label;return [r.fecha,r.nombre,r.empresa,r.dept,r.cargo,r.nivel,r.antiguedad,score,clasif,r.general,r.recomienda,...avgs].map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`);});
   }else{
     headers=['Fecha','Colaborador','Empresa','Dpto','Cargo','Evaluador','Score%','Clasificación','Global','Prom.Comp',...items.map(c=>c.titulo)];
     rows=resp.map(r=>{const score=r.score??calculateScore(r,p);const clasif=r.clasif||applyCalibration(score,p)?.label;const cp=items.map((_,ci)=>r.compProms?.[ci]?.toFixed(1)||'');return [r.fecha,r.ev_nombre,r.ev_empresa,r.ev_dept,r.ev_cargo,r.eval_nombre,score,clasif,r.global,r.prom_comp,...cp].map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`);});
   }
   const csv=[headers.map(h=>`"${h}"`).join(','),...rows.map(r=>r.join(','))].join('\n');
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`IntraRH_${p.empresa}_${today()}.csv`;a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`IntraRH_${p.empresa.replace(/\s+/g,'_')}_${today()}.csv`;a.click();
   showToast('✅ CSV exportado','success');
 }
 
@@ -2899,86 +2908,496 @@ function exportXLSXProj(p,resp,isClima,items,escala){
     const wb=XLSX.utils.book_new();
     const scores=resp.map(r=>r.score??calculateScore(r,p));
     const avgScore=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
-    const kpiRows=[['Proyecto',p.nombre],['Empresa',p.empresa],['Período',p.periodo||'—'],['Tipo',isClima?'Clima Organizacional':'Evaluación de Desempeño'],['Total respuestas',resp.length],['Score promedio',avgScore+'%'],['Escala','1 – '+escala],['Fecha export',today()]];
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(kpiRows),'Resumen');
-    const dimRows=[[isClima?'Dimensión':'Competencia','Respuestas','Promedio','Score %']];
-    items.forEach((d,di)=>{const vals=[];if(isClima)resp.forEach(r=>d.preguntas.forEach((_,pi)=>{const v=r.dimResp?.['dim_'+di+'_'+pi];if(v)vals.push(v);}));else resp.forEach(r=>d.preguntas.forEach((_,pi)=>{const v=r.compResp?.['comp_'+di+'_'+pi];if(v)vals.push(v);}));const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):0;dimRows.push([d.titulo,vals.length,avg,Math.round((avg/escala)*100)+'%']);});
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dimRows),isClima?'Dimensiones':'Competencias');
-    if(isClima){const h=['Fecha','Nombre','Empresa','Dpto','Cargo','Nivel','Score%','Clasificación','General','Recomienda',...items.map(d=>d.titulo)];const rows=resp.map(r=>{const score=r.score??calculateScore(r,p);const clasif=r.clasif||applyCalibration(score,p)?.label;const avgs=items.map((d,di)=>{const v=d.preguntas.map((_,pi)=>r.dimResp?.['dim_'+di+'_'+pi]).filter(v=>v);return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'';});return [r.fecha,r.nombre,r.empresa,r.dept,r.cargo,r.nivel,score,clasif,r.general,r.recomienda,...avgs];});const ws=XLSX.utils.aoa_to_sheet([h,...rows]);ws['!cols']=h.map(()=>({wch:16}));XLSX.utils.book_append_sheet(wb,ws,'Datos completos');}
-    else{const h=['Fecha','Colaborador','Empresa','Dpto','Evaluador','Score%','Clasificación','Global','Prom.Comp',...items.map(c=>c.titulo)];const rows=resp.map(r=>{const score=r.score??calculateScore(r,p);const clasif=r.clasif||applyCalibration(score,p)?.label;const cp=items.map((_,ci)=>r.compProms?.[ci]?.toFixed(1)||'');return [r.fecha,r.ev_nombre,r.ev_empresa,r.ev_dept,r.eval_nombre,score,clasif,r.global,r.prom_comp,...cp];});const ws=XLSX.utils.aoa_to_sheet([h,...rows]);ws['!cols']=h.map(()=>({wch:16}));XLSX.utils.book_append_sheet(wb,ws,'Datos completos');}
-    XLSX.writeFile(wb,`IntraRH_${p.empresa.replace(/ /g,'_')}_${today()}.xlsx`);
+    const dimStats=getDimStats(items,resp,isClima,escala);
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+      ['Proyecto',p.nombre],['Empresa',p.empresa],['Período',p.periodo||'—'],
+      ['Tipo',isClima?'Clima Organizacional':'Evaluación de Desempeño'],
+      ['Total respuestas',resp.length],['Score promedio',avgScore+'%'],
+      ['Escala','1–'+escala],['Fecha export',today()]
+    ]),'Resumen');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+      [isClima?'Dimensión':'Competencia','N respuestas','Promedio','Score %'],
+      ...dimStats.map(d=>[d.titulo,d.n,d.avg.toFixed(2),d.pct+'%'])
+    ]),isClima?'Dimensiones':'Competencias');
+    if(isClima){
+      const h=['Fecha','Nombre','Empresa','Dpto','Cargo','Nivel','Score%','Clasificación','General','Recomienda',...items.map(d=>d.titulo)];
+      const rows=resp.map(r=>{const score=r.score??calculateScore(r,p);const clasif=r.clasif||applyCalibration(score,p)?.label;const avgs=items.map((d,di)=>{const v=d.preguntas.map((_,pi)=>r.dimResp?.['dim_'+di+'_'+pi]).filter(v=>typeof v==='number');return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'';});return [r.fecha,r.nombre,r.empresa,r.dept,r.cargo,r.nivel,score,clasif,r.general,r.recomienda,...avgs];});
+      const ws=XLSX.utils.aoa_to_sheet([h,...rows]);ws['!cols']=h.map(()=>({wch:16}));
+      XLSX.utils.book_append_sheet(wb,ws,'Datos completos');
+    }else{
+      const h=['Fecha','Colaborador','Empresa','Dpto','Evaluador','Score%','Clasificación','Global','Prom.Comp',...items.map(c=>c.titulo)];
+      const rows=resp.map(r=>{const score=r.score??calculateScore(r,p);const clasif=r.clasif||applyCalibration(score,p)?.label;const cp=items.map((_,ci)=>r.compProms?.[ci]?.toFixed(1)||'');return [r.fecha,r.ev_nombre,r.ev_empresa,r.ev_dept,r.eval_nombre,score,clasif,r.global,r.prom_comp,...cp];});
+      const ws=XLSX.utils.aoa_to_sheet([h,...rows]);ws['!cols']=h.map(()=>({wch:16}));
+      XLSX.utils.book_append_sheet(wb,ws,'Datos completos');
+    }
+    XLSX.writeFile(wb,`IntraRH_${p.empresa.replace(/\s+/g,'_')}_${today()}.xlsx`);
     showToast('✅ Excel exportado','success');
   }catch(e){showToast('Error Excel: '+e.message,'error');}
 }
 
-function exportPDFProj(p,resp,isClima,items,escala){
-  try{
+// ── INFORME PDF BRANDED (estilo Conformatic) ──
+function exportPDFProj(p, resp, isClima, items, escala) {
+  try {
     const {jsPDF}=window.jspdf;
-    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-    const W=297,mg=14,PURPLE=[123,79,166],WHITE=[255,255,255],DARK=[45,45,58],MUTED=[139,139,160];
+    const orient=getInfOrient();
+    const isLand=orient==='landscape';
+    const doc=new jsPDF({orientation:orient,unit:'mm',format:'a4'});
+    const W=isLand?297:210, H=isLand?210:297, mg=16;
+    const C=getProjectColors(p);
+    const SIDE=50;
+    const dimStats=getDimStats(items,resp,isClima,escala);
     const scores=resp.map(r=>r.score??calculateScore(r,p));
     const avgScore=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
-    // Cover
-    doc.setFillColor(...PURPLE);doc.rect(0,0,W,210,'F');
-    doc.setFillColor(155,111,198);doc.rect(0,155,W,55,'F');
-    doc.setTextColor(...WHITE);doc.setFontSize(9);doc.setFont('helvetica','normal');
-    doc.text('IntraRHecursos · Sistema de Evaluaciones · '+CFG.firma,mg,18);
-    doc.setFontSize(28);doc.setFont('helvetica','bold');
-    doc.text(p.nombre.substring(0,50),mg,52,{maxWidth:W-mg*2});
-    doc.setFontSize(14);doc.setFont('helvetica','normal');
-    doc.text(p.empresa+' · '+(p.periodo||'—'),mg,70);
-    doc.setFontSize(11);doc.text(resp.length+' respuestas · Score promedio: '+avgScore+'% · '+today(),mg,82);
-    // KPIs page
+    const depts=[...new Set(resp.map(r=>r.dept||r.ev_dept).filter(Boolean))];
+
+    // ── PORTADA ──
+    doc.setFillColor(...C.primary);
+    doc.rect(W-SIDE,0,SIDE,H,'F');        // barra lateral derecha azul
+    doc.setFillColor(...C.accent);
+    doc.rect(0,H-36,W-SIDE,36,'F');       // banda inferior azul claro
+
+    doc.setTextColor(...C.dark);
+    doc.setFontSize(isLand?34:26); doc.setFont('helvetica','bold');
+    const titleStr=(isClima?'CLIMA\nORGANIZACIONAL':'EVALUACIÓN DE\nDESEMPEÑO');
+    doc.text(titleStr,mg,isLand?62:50,{maxWidth:W-SIDE-mg*2});
+
+    doc.setFontSize(isLand?20:15); doc.setFont('helvetica','bold'); doc.setTextColor(...C.secondary);
+    doc.text(p.empresa.toUpperCase(),mg,isLand?102:102);
+    doc.setFontSize(isLand?16:13); doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark);
+    doc.text((p.periodo||today()).toUpperCase(),mg,isLand?116:116);
+
+    doc.setTextColor(...C.white);
+    doc.setFontSize(isLand?9:8); doc.setFont('helvetica','bold');
+    doc.text(p.empresa,mg,H-22);
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text('IntraRHecursos · Sistema de Evaluaciones',mg,H-14);
+
+    // ── PÁG 2: ÍNDICE ──
     doc.addPage();
-    function pdfHdr(){doc.setFillColor(...PURPLE);doc.rect(0,0,W,12,'F');doc.setTextColor(...WHITE);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text(p.nombre,mg,9);}
-    pdfHdr();
-    let y=26;
-    doc.setFontSize(14);doc.setTextColor(...PURPLE);doc.setFont('helvetica','bold');doc.text('Indicadores clave',mg,y);y+=10;
-    const kpis4=[[' ','Respuestas',String(resp.length),PURPLE],['⭐','Score promedio',avgScore+'%',[243,156,18]],[' ','Empresa',p.empresa.substring(0,16),[58,155,213]],[' ','Período',p.periodo||'—',[39,174,96]]];
-    const kW=(W-mg*2-15)/4;
-    kpis4.forEach(([_,lbl,val,clr],i)=>{const kx=mg+i*(kW+5);doc.setFillColor(243,238,249);doc.roundedRect(kx,y,kW,20,2,2,'F');doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(...MUTED);doc.text(lbl,kx+4,y+7);doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(...clr);doc.text(val,kx+4,y+16);});
-    y+=30;
-    doc.setFontSize(12);doc.setTextColor(...DARK);doc.setFont('helvetica','bold');doc.text(isClima?'Resultados por dimensión:':'Resultados por competencia:',mg,y);y+=8;
-    items.forEach((d,di)=>{const vals=[];if(isClima)resp.forEach(r=>d.preguntas.forEach((_,pi)=>{const v=r.dimResp?.['dim_'+di+'_'+pi];if(v)vals.push(v);}));else resp.forEach(r=>d.preguntas.forEach((_,pi)=>{const v=r.compResp?.['comp_'+di+'_'+pi];if(v)vals.push(v);}));const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length):0;const pct=Math.round((avg/escala)*100);const bW=(W-mg*2-55)*pct/100;const clr=pct>=80?[39,174,96]:pct>=60?[58,155,213]:[243,156,18];doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.text(d.titulo.substring(0,28),mg,y);doc.setFillColor(228,226,238);doc.rect(mg+58,y-4,W-mg*2-55,5,'F');doc.setFillColor(...clr);doc.rect(mg+58,y-4,Math.max(bW,1),5,'F');doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...clr);doc.text(avg.toFixed(1)+'/'+escala+' ('+pct+'%)',W-mg-2,y,{align:'right'});y+=9;if(y>190){doc.addPage();pdfHdr();y=24;}});
-    doc.setFontSize(7);doc.setTextColor(...MUTED);doc.text('IntraRHecursos · '+p.nombre+' · '+today(),mg,doc.internal.pageSize.height-5);
-    doc.save('IntraRH_'+p.empresa.replace(/ /g,'_')+'_'+today()+'.pdf');
+    doc.setFillColor(...C.primary);
+    doc.rect(0,0,SIDE,H,'F');  // barra lateral izquierda
+    doc.setTextColor(...C.white);
+    doc.setFontSize(isLand?14:11); doc.setFont('helvetica','bold');
+    doc.text('INFORME\nDE RESULTADOS',6,isLand?36:32,{maxWidth:SIDE-8});
+    doc.setFontSize(isLand?11:9);
+    doc.text(isClima?'CLIMA\nORGANIZACIONAL':'EVALUACIÓN\nDESEMPEÑO',6,isLand?68:62,{maxWidth:SIDE-8});
+    doc.setDrawColor(...C.accent); doc.setLineWidth(.7);
+    doc.line(6,isLand?88:80,SIDE-6,isLand?88:80);
+    doc.setFontSize(7); doc.setFont('helvetica','bold');
+    doc.text('TEMAS A ABORDAR',6,isLand?96:90);
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text('intraRHecursos',6,H-10);
+
+    doc.setTextColor(...C.dark);
+    doc.setFontSize(isLand?11:9); doc.setFont('helvetica','bold');
+    doc.text('Contenido:',SIDE+mg,isLand?32:28);
+    const temas=isClima
+      ?['Datos generales','Cultura Organizacional','Liderazgo','Compensación y Beneficios','Bienestar','Ambiente Físico','Comentarios']
+      :['Datos generales','Resultados por competencia','Evaluación de objetivos','Distribución de clasificaciones','Por departamento','Recomendaciones'];
+    doc.setFontSize(isLand?9:8); doc.setFont('helvetica','normal');
+    temas.forEach((t,i)=>{
+      doc.setFillColor(...C.accent);
+      doc.circle(SIDE+mg+2.5,isLand?42+i*10:38+i*9,1.3,'F');
+      doc.setTextColor(...C.dark);
+      doc.text(t,SIDE+mg+7,isLand?44+i*10:40+i*9);
+    });
+
+    // ── PÁG 3: KPIs ──
+    doc.addPage();
+    doc.setFillColor(...C.primary);
+    doc.rect(0,0,W,isLand?14:12,'F');
+    doc.setFillColor(...C.primary);
+    doc.rect(W-SIDE,0,SIDE,H,'F');
+    doc.setTextColor(...C.white); doc.setFontSize(8); doc.setFont('helvetica','bold');
+    doc.text(p.empresa+' · '+p.nombre,mg,isLand?10:9);
+    doc.text(today(),W-SIDE-2,isLand?10:9,{align:'right'});
+
+    let y=isLand?24:20;
+    doc.setTextColor(...C.dark); doc.setFontSize(isLand?13:11); doc.setFont('helvetica','bold');
+    doc.text('INDICADORES CLAVE',mg,y); y+=isLand?10:9;
+
+    const kpis=[[resp.length+'','Respuestas',C.secondary],[avgScore+'%','Score promedio',[243,156,18]],[depts.length||'—','Departamentos',C.accent],['1–'+escala,'Escala',[39,174,96]]];
+    const kW=(W-SIDE-mg*2-12)/4;
+    kpis.forEach(([val,lbl,clr],i)=>{
+      const kx=mg+i*(kW+4);
+      doc.setFillColor(...C.light); doc.roundedRect(kx,y,kW,isLand?20:17,2,2,'F');
+      doc.setFillColor(...clr); doc.rect(kx,y,kW,1.5,'F');
+      doc.setFontSize(6); doc.setFont('helvetica','normal'); doc.setTextColor(...C.muted);
+      doc.text(lbl,kx+3,y+7);
+      doc.setFontSize(isLand?14:12); doc.setFont('helvetica','bold'); doc.setTextColor(...clr);
+      doc.text(val,kx+3,y+(isLand?17:14));
+    });
+    y+=isLand?28:25;
+
+    // Barras por dimensión
+    doc.setTextColor(...C.dark); doc.setFontSize(isLand?11:9); doc.setFont('helvetica','bold');
+    doc.text(isClima?'RESULTADOS POR DIMENSIÓN':'RESULTADOS POR COMPETENCIA',mg,y); y+=7;
+    const barW=W-SIDE-mg*2-52;
+    dimStats.forEach(d=>{
+      const clr=scoreColor(d.pct);
+      doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark);
+      doc.text(d.titulo.substring(0,30),mg,y);
+      doc.setFillColor(220,225,235); doc.roundedRect(mg+52,y-4,barW,4.5,1,1,'F');
+      doc.setFillColor(...clr); doc.roundedRect(mg+52,y-4,Math.max(barW*d.pct/100,0.5),4.5,1,1,'F');
+      doc.setFont('helvetica','bold'); doc.setTextColor(...clr);
+      doc.text(d.avg.toFixed(1)+'/'+escala+' ('+d.pct+'%)',W-SIDE-2,y,{align:'right'});
+      y+=8.5;
+      if(y>H-20){doc.addPage();doc.setFillColor(...C.primary);doc.rect(W-SIDE,0,SIDE,H,'F');y=18;}
+    });
+    doc.setFontSize(6.5); doc.setTextColor(...C.muted);
+    doc.text('IntraRHecursos · '+p.nombre+' · '+today(),mg,H-5);
+
+    doc.save('IntraRH_'+p.empresa.replace(/\s+/g,'_')+'_'+today()+'.pdf');
     showToast('✅ PDF exportado','success');
+  }catch(e){showToast('Error PDF: '+e.message,'error');console.error(e);}
+}
+
+// ── WORD / DOCX PROFESIONAL (via Supabase Edge Function) ──
+async function exportWordProj(p, resp, isClima, items, escala) {
+  showToast('⏳ Generando informe Word…');
+  try {
+    // Intentar via Edge Function (genera .docx real estilo Viva Wyndham)
+    const fnUrl = `${SUPA_URL}/functions/v1/word-informe`;
+    const payload = {
+      p: {
+        id: p.id, nombre: p.nombre, empresa: p.empresa, tipo: p.tipo,
+        periodo: p.periodo, escala, logo: p.logo||'',
+        calibracion: p.calibracion
+      },
+      resp: resp.map(r=>({
+        id:r.id, fecha:r.fecha, ev_nombre:r.ev_nombre||r.nombre||'',
+        nombre:r.nombre||r.ev_nombre||'', ev_dept:r.ev_dept||r.dept||'',
+        dept:r.dept||r.ev_dept||'', ev_cargo:r.ev_cargo||r.cargo||'',
+        cargo:r.cargo||r.ev_cargo||'', eval_nombre:r.eval_nombre||'',
+        eval_tipo:r.eval_tipo||'', score:r.score||calculateScore(r,p),
+        clasif:r.clasif||'', prom_comp:r.prom_comp||'',
+        compResp:r.compResp||{}, dimResp:r.dimResp||{},
+        fortalezas:r.fortalezas||'', oportunidades:r.oportunidades||'',
+        feedback:r.feedback||'', potencial:r.potencial||''
+      })),
+      isClima,
+      items: items.map(d=>({titulo:d.titulo, preguntas:d.preguntas.map(p2=>typeof p2==='object'?p2.texto:(p2||''))})),
+      escala
+    };
+    const res = await fetch(fnUrl, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${SUPA_KEY}`, 'apikey':SUPA_KEY },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok && res.headers.get('content-type')?.includes('octet-stream')) {
+      const buffer = await res.arrayBuffer();
+      const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+      const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+      a.download = 'IntraRH_'+p.empresa.replace(/\s+/g,'_')+'_'+today()+'.docx'; a.click();
+      showToast('✅ Informe Word (.docx) generado','success');
+      return;
+    }
+    throw new Error('Edge Function no disponible');
+  } catch(e) {
+    // Fallback: generar HTML Word enriquecido
+    _exportWordFallback(p, resp, isClima, items, escala);
+  }
+}
+
+function _exportWordFallback(p, resp, isClima, items, escala) {
+  const dimStats=getDimStats(items,resp,isClima,escala);
+  const scores=resp.map(r=>r.score??calculateScore(r,p));
+  const avgScore=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
+  const depts=[...new Set(resp.map(r=>r.dept||r.ev_dept).filter(Boolean))];
+  const clasifs=p.calibracion?.clasificaciones||[{label:'Sobresaliente',min:90},{label:'Supera expectativas',min:75},{label:'Cumple expectativas',min:55},{label:'Por debajo',min:35},{label:'Insuficiente',min:0}];
+
+  const dimRows=dimStats.map(d=>{
+    const clr=d.pct>=80?'#27AE60':d.pct>=60?'#1264A3':d.pct>=40?'#F39C12':'#E74C3C';
+    const bar='█'.repeat(Math.round(d.pct/2.5))+'░'.repeat(40-Math.round(d.pct/2.5));
+    return `<tr><td style="padding:6pt 10pt;border-bottom:1pt solid #E4E8EF;">${d.titulo}</td><td style="text-align:center;padding:6pt 10pt;border-bottom:1pt solid #E4E8EF;">${d.n}</td><td style="text-align:center;font-weight:bold;color:${clr};padding:6pt 10pt;border-bottom:1pt solid #E4E8EF;">${d.avg.toFixed(2)}/${escala}</td><td style="font-family:Courier New;font-size:8pt;color:${clr};padding:6pt 10pt;border-bottom:1pt solid #E4E8EF;">${bar} ${d.pct}%</td></tr>`;
+  }).join('');
+  const distRows=clasifs.map(c=>{const n=resp.filter(r=>r.clasif===c.label).length;const pct=resp.length?Math.round(n/resp.length*100):0;const clr=n>0?'#1264A3':'#999';return `<tr><td style="padding:6pt 10pt;border-bottom:1pt solid #E4E8EF;">${c.label}</td><td style="text-align:center;font-weight:bold;color:${clr};padding:6pt 10pt;border-bottom:1pt solid #E4E8EF;">${n}</td><td style="text-align:center;font-weight:bold;color:${clr};padding:6pt 10pt;border-bottom:1pt solid #E4E8EF;">${pct}%</td></tr>`;}).join('');
+  const deptRows=depts.map(dept=>{const dd=resp.filter(r=>(r.dept||r.ev_dept)===dept);const sc=dd.map(r=>r.score??calculateScore(r,p));const avg=sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):'—';const clr=parseFloat(avg)>=80?'#27AE60':parseFloat(avg)>=60?'#1264A3':parseFloat(avg)>=40?'#F39C12':'#E74C3C';return `<tr><td style="padding:6pt 10pt;border-bottom:1pt solid #E4E8EF;">${dept}</td><td style="text-align:center;padding:6pt 10pt;border-bottom:1pt solid #E4E8EF;">${dd.length}</td><td style="text-align:center;font-weight:bold;color:${clr};padding:6pt 10pt;border-bottom:1pt solid #E4E8EF;">${avg}%</td></tr>`;}).join('');
+  const fichas=resp.map(r=>{
+    const score=r.score??calculateScore(r,p);
+    const clr=score>=80?'#27AE60':score>=60?'#1264A3':score>=40?'#F39C12':'#E74C3C';
+    const ds=getDimStats(items,[r],isClima,escala);
+    const dsRows=ds.map(d=>{const dc=d.pct>=80?'#27AE60':d.pct>=60?'#1264A3':d.pct>=40?'#F39C12':'#E74C3C';const bar='█'.repeat(Math.round(d.pct/2.5))+'░'.repeat(40-Math.round(d.pct/2.5));return `<tr><td style="padding:5pt 8pt;border-bottom:1pt solid #E4E8EF;font-size:9pt;">${d.titulo}</td><td style="text-align:center;font-weight:bold;color:${dc};font-size:9pt;padding:5pt 8pt;border-bottom:1pt solid #E4E8EF;">${d.avg.toFixed(2)}/${escala}</td><td style="font-family:Courier New;font-size:8pt;color:${dc};padding:5pt 8pt;border-bottom:1pt solid #E4E8EF;">${bar}</td><td style="text-align:center;font-weight:bold;color:${dc};font-size:9pt;padding:5pt 8pt;border-bottom:1pt solid #E4E8EF;">${d.pct}%</td></tr>`;}).join('');
+    return `<div style="page-break-before:always;border-left:4pt solid #E26B1F;padding-left:10pt;margin-top:20pt;">
+      <div style="font-size:16pt;font-weight:bold;color:#1E2A44;">${r.nombre||r.ev_nombre||'—'}</div>
+      <div style="font-size:9pt;color:#666;margin-bottom:8pt;">${r.cargo||r.ev_cargo||'—'} · ${r.dept||r.ev_dept||'—'}</div>
+    </div>
+    <table style="border-collapse:collapse;width:100%;margin-bottom:10pt;"><tr>
+      <td style="background:${clr};color:#fff;text-align:center;padding:12pt;width:22%"><div style="font-size:22pt;font-weight:900;">${score}%</div><div style="font-size:8pt;">Score Total</div></td>
+      <td style="background:#F5F5F5;text-align:center;padding:12pt;width:22%"><div style="font-size:14pt;font-weight:bold;color:${clr};">${r.clasif||'—'}</div><div style="font-size:8pt;color:#666">Clasificación</div></td>
+      <td style="background:#F5F5F5;text-align:center;padding:12pt;width:18%"><div style="font-size:14pt;font-weight:bold;color:#1E2A44;">${r.prom_comp||'—'}</div><div style="font-size:8pt;color:#666">Prom. Comp.</div></td>
+      <td style="background:#F5F5F5;text-align:center;padding:12pt;width:38%"><div style="font-size:12pt;font-weight:bold;color:#1E2A44;">${r.fecha||'—'}</div><div style="font-size:8pt;color:#666">Fecha evaluación</div></td>
+    </tr></table>
+    <p style="font-weight:bold;font-size:10pt;margin-bottom:6pt;">${isClima?'Resultados por dimensión:':'Resultados por competencia:'}</p>
+    <table style="border-collapse:collapse;width:100%;margin-bottom:10pt;"><thead><tr><th style="background:#1E2A44;color:#fff;padding:5pt 8pt;font-size:8pt;text-align:left;">${isClima?'Dimensión':'Competencia'}</th><th style="background:#1E2A44;color:#fff;padding:5pt 8pt;font-size:8pt;text-align:center;">Prom.</th><th style="background:#1E2A44;color:#fff;padding:5pt 8pt;font-size:8pt;">Gráfico</th><th style="background:#1E2A44;color:#fff;padding:5pt 8pt;font-size:8pt;text-align:center;">%</th></tr></thead><tbody>${dsRows}</tbody></table>
+    ${r.fortalezas?`<p style="margin-bottom:3pt;font-size:10pt;"><b>Fortalezas:</b> <span style="color:#444">${r.fortalezas}</span></p>`:''}
+    ${r.oportunidades?`<p style="margin-bottom:3pt;font-size:10pt;"><b>Oportunidades de mejora:</b> <span style="color:#444">${r.oportunidades}</span></p>`:''}
+    ${r.feedback?`<p style="margin-bottom:3pt;font-size:10pt;"><b>Retroalimentación:</b> <span style="color:#444">${r.feedback}</span></p>`:''}
+    <hr style="border:0;border-top:1pt solid #E0E0E0;margin-top:10pt;">`;
+  }).join('');
+
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+  @page{size:A4;margin:2cm 2.5cm;}
+  body{font-family:Arial,sans-serif;color:#1E2A44;margin:0;}
+  .cover{border-left:12pt solid #E26B1F;padding:60pt 40pt;margin:-2cm -2.5cm 0;min-height:200pt;}
+  .cover-title{font-size:28pt;font-weight:900;margin-bottom:8pt;}
+  .cover-co{font-size:18pt;color:#E26B1F;font-weight:bold;margin-bottom:6pt;}
+  .cover-per{font-size:13pt;color:#666;}
+  .cover-by{margin-top:120pt;text-align:right;font-size:10pt;color:#666;}
+  .band{background:#1E2A44;padding:8pt 40pt;color:#fff;font-size:8pt;display:flex;justify-content:space-between;margin:0 -2.5cm 20pt;}
+  .sec{text-align:center;font-weight:bold;font-size:12pt;margin:24pt 0 12pt;color:#1E2A44;}
+  .hline{border:0;border-top:1.5pt solid #E26B1F;margin:8pt 0 18pt;}
+  .hline-gray{border:0;border-top:1pt solid #E0E0E0;margin:6pt 0 14pt;}
+  .kpi-row{display:flex;gap:10pt;margin:12pt 0;flex-wrap:wrap;}
+  .kpi{background:#F5F5F5;border-radius:4pt;padding:10pt 14pt;border-top:3pt solid #1264A3;min-width:80pt;}
+  .kpi-val{font-size:22pt;font-weight:900;color:#1264A3;}
+  .kpi-lbl{font-size:7pt;color:#7882A0;text-transform:uppercase;}
+  table{border-collapse:collapse;width:100%;margin:6pt 0;}
+  th{background:#1E2A44;color:#fff;padding:6pt 10pt;font-size:8pt;text-align:left;}
+  .footer{position:fixed;bottom:0;left:0;right:0;font-size:7pt;color:#999;border-top:1pt solid #E26B1F;padding:4pt 2.5cm;display:flex;justify-content:space-between;}
+</style></head><body>
+<div class="cover">
+  <div class="cover-title">INFORME</div>
+  <div class="cover-co">${(isClima?'CLIMA ORGANIZACIONAL':'EVALUACIÓN DE DESEMPEÑO')} — ${p.empresa.toUpperCase()}</div>
+  <div class="cover-per">${p.periodo||today()}</div>
+  <div class="cover-by">Por: <b style="color:#E26B1F">intraRHecursos</b></div>
+</div>
+<div class="band"><span>${p.empresa} · IntraRHecursos</span><span>Confidencial · ${today()}</span></div>
+<div class="sec">${isClima?'Informe de Clima Organizacional':'Informe Evaluación de Desempeño'} — ${p.empresa}</div>
+<hr class="hline">
+<p style="text-align:justify;font-size:10pt;">Este informe presenta el análisis consolidado del proceso de ${isClima?'evaluación de clima organizacional':'evaluación de desempeño'} realizado en ${p.empresa}, período ${p.periodo||'—'}.</p>
+<hr class="hline-gray">
+<div class="sec">I.  Datos generales del proceso</div>
+<p style="font-size:10pt;">Empresa: <b>${p.empresa}</b> · Período: <b>${p.periodo||'—'}</b> · Escala: 1–${escala} · Tipo: ${isClima?'Clima':'Desempeño'} · Respuestas: <b>${resp.length}</b> · Departamentos: <b>${depts.join(', ')||'—'}</b></p>
+<hr class="hline-gray">
+<div class="sec">II.  Análisis de tendencias</div>
+<p style="text-align:justify;font-size:10pt;">El promedio general del grupo evaluado fue de <b>${avgScore} sobre ${escala}</b>, correspondiente a un desempeño ${parseFloat(avgScore)/escala>=0.8?'sobresaliente':parseFloat(avgScore)/escala>=0.6?'sólido con oportunidades de mejora':'que requiere atención'}.</p>
+<hr class="hline-gray">
+<div class="sec">III.  Distribución del desempeño</div>
+<table><thead><tr><th>Clasificación</th><th style="text-align:center">N</th><th style="text-align:center">%</th></tr></thead><tbody>${distRows}</tbody></table>
+<hr class="hline-gray">
+<div class="sec">IV.  Resultados por ${isClima?'dimensión':'competencia'}</div>
+<table><thead><tr><th>${isClima?'Dimensión':'Competencia'}</th><th style="text-align:center">N</th><th style="text-align:center">Promedio</th><th>Gráfico</th></tr></thead><tbody>${dimRows}</tbody></table>
+${depts.length?`<hr class="hline-gray"><div class="sec">V.  Análisis por departamento</div><table><thead><tr><th>Departamento</th><th style="text-align:center">N</th><th style="text-align:center">Score</th></tr></thead><tbody>${deptRows}</tbody></table>`:''}
+<hr class="hline-gray">
+<div class="sec">VI.  Conclusión</div>
+<p style="text-align:justify;font-size:10pt;">El proceso refleja un nivel general de <b>${avgScore}/${escala}</b> con ${resp.length} evaluaciones registradas. ${dimStats.sort((a,b)=>b.pct-a.pct).length>1?'Mayor fortaleza en: '+dimStats.sort((a,b)=>b.pct-a.pct).slice(0,2).map(d=>d.titulo).join(' y ')+'. Oportunidad de mejora: '+dimStats.sort((a,b)=>a.pct-b.pct).slice(0,2).map(d=>d.titulo).join(' y ')+'.':''}</p>
+<hr class="hline-gray">
+<div class="sec">VII.  Firmas de validación</div>
+<div style="display:flex;gap:20pt;margin-top:40pt;padding:0 20pt;">
+  <div style="flex:1;text-align:center;border-top:1.5pt solid #1E2A44;padding-top:6pt;font-size:9pt;font-weight:bold;">Colaborador<br><span style="font-weight:normal;color:#666;font-size:8pt;">Fecha: ___________________</span></div>
+  <div style="flex:1;text-align:center;border-top:1.5pt solid #1E2A44;padding-top:6pt;font-size:9pt;font-weight:bold;">Evaluador<br><span style="font-weight:normal;color:#666;font-size:8pt;">Fecha: ___________________</span></div>
+  <div style="flex:1;text-align:center;border-top:1.5pt solid #1E2A44;padding-top:6pt;font-size:9pt;font-weight:bold;">Gestión Humana / IntraRHecursos<br><span style="font-weight:normal;color:#666;font-size:8pt;">Fecha: ___________________</span></div>
+</div>
+<div style="page-break-before:always"></div>
+<div class="sec">Anexo.  Fichas individuales de resultados</div>
+<p style="font-size:10pt;">A continuación se presentan las ${resp.length} fichas individuales:</p>
+${fichas}
+<div class="footer"><span>${p.empresa} · IntraRHecursos · Confidencial</span><span>${today()}</span></div>
+</body></html>`;
+
+  const blob=new Blob([html],{type:'application/msword;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='IntraRH_'+p.empresa.replace(/\s+/g,'_')+'_'+today()+'.doc'; a.click();
+  showToast('✅ Informe Word generado (.doc)','success');
+}
+
+// ── PPTX BRANDED (estilo Conformatic) ──
+async function exportPPTXProj(p, resp, isClima, items, escala) {
+  try {
+    const pres=new PptxGenJS();
+    pres.layout='LAYOUT_WIDE'; pres.title=p.nombre+' · IntraRHecursos';
+    const dimStats=getDimStats(items,resp,isClima,escala);
+    const scores=resp.map(r=>r.score??calculateScore(r,p));
+    const avgScore=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
+    const depts=[...new Set(resp.map(r=>r.dept||r.ev_dept).filter(Boolean))];
+
+    const BLUE='1264A3', LBLUE='1AA7D8', PURPLE='7B4FA6';
+    const WHITE='FFFFFF', DARK='1E2A44', GRAY='F5F8FC', MUTED='7882A0';
+    const W=13.33, H=7.5, SIDE=1.55;
+
+    function slide(bg) {
+      const s=pres.addSlide();
+      s.background={color:bg||WHITE};
+      s.addShape(pres.shapes.RECTANGLE,{x:W-SIDE,y:0,w:SIDE,h:H,fill:{color:BLUE}});
+      s.addText(p.empresa+' · IntraRHecursos',{x:.3,y:H-.36,w:W-SIDE-.5,h:.28,fontSize:6,color:MUTED,fontFace:'Arial'});
+      return s;
+    }
+
+    // ── S1: PORTADA ──
+    const s1=slide(WHITE);
+    s1.addShape(pres.shapes.RECTANGLE,{x:0,y:H-1.3,w:W-SIDE,h:1.3,fill:{color:LBLUE}});
+    s1.addText(isClima?'CLIMA\nORGANIZACIONAL':'EVALUACIÓN DE\nDESEMPEÑO',
+      {x:.5,y:1.1,w:W-SIDE-1,h:3.2,fontSize:42,color:DARK,bold:true,fontFace:'Arial',valign:'middle'});
+    s1.addText(p.empresa.toUpperCase(),
+      {x:.5,y:4.5,w:W-SIDE-1,h:.65,fontSize:21,color:PURPLE,bold:true,fontFace:'Arial'});
+    s1.addText((p.periodo||today()).toUpperCase(),
+      {x:.5,y:5.2,w:W-SIDE-1,h:.5,fontSize:14,color:DARK,fontFace:'Arial'});
+    if(p.logo){try{s1.addImage({path:p.logo,x:.4,y:H-1.25,w:1.4,h:.9,sizing:{type:'contain'}});}catch(e){}}
+    s1.addText('intraRHecursos',{x:.4,y:H-.38,w:2.5,h:.3,fontSize:8,color:WHITE,fontFace:'Arial'});
+
+    // ── S2: TEMAS ──
+    const s2=pres.addSlide();
+    s2.background={color:BLUE};
+    s2.addShape(pres.shapes.RECTANGLE,{x:SIDE+.4,y:0,w:W-SIDE-.4,h:H,fill:{color:WHITE}});
+    s2.addText('INFORME DE\nRESULTADOS',{x:.15,y:.7,w:SIDE+.1,h:2.2,fontSize:14,color:WHITE,bold:true,fontFace:'Arial'});
+    s2.addText(isClima?'CLIMA\nORGANIZACIONAL':'EVALUACIÓN\nDESEMPEÑO',{x:.15,y:3.1,w:SIDE+.1,h:1.1,fontSize:10,color:LBLUE,fontFace:'Arial'});
+    s2.addShape(pres.shapes.RECTANGLE,{x:.15,y:4.4,w:1.1,h:.05,fill:{color:MUTED}});
+    s2.addText('TEMAS A ABORDAR',{x:.15,y:4.6,w:SIDE+.1,h:.5,fontSize:8,color:WHITE,bold:true,fontFace:'Arial'});
+    s2.addText('intraRHecursos',{x:.15,y:H-.45,w:SIDE+.1,h:.32,fontSize:7,color:'C4D0E0',fontFace:'Arial'});
+    s2.addText('Contenido del informe',{x:SIDE+.8,y:.5,w:W-SIDE-1.2,h:.5,fontSize:14,color:DARK,bold:true,fontFace:'Arial'});
+    const temas=isClima?['Datos generales','Cultura Organizacional','Liderazgo','Compensación y Beneficios','Bienestar','Ambiente Físico','Comentarios']:['Datos generales','Resultados por competencia','Evaluación de objetivos','Distribución de clasificaciones','Análisis por departamento','Recomendaciones'];
+    s2.addText(temas.map(t=>'  •  '+t).join('\n'),{x:SIDE+.8,y:1.2,w:W-SIDE-1.2,h:5.5,fontSize:11,color:DARK,fontFace:'Arial',lineSpacingMultiple:1.55});
+
+    // ── S3: KPIs ──
+    const s3=slide(GRAY);
+    s3.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:W-SIDE,h:.62,fill:{color:BLUE}});
+    s3.addText('INDICADORES CLAVE',{x:.4,y:.1,w:W-SIDE-.6,h:.42,fontSize:17,color:WHITE,bold:true,fontFace:'Arial'});
+    const kData=[[String(resp.length),'Respuestas',BLUE],[avgScore+'%','Score promedio','F39C12'],[String(depts.length||'—'),'Departamentos',LBLUE],['1–'+escala,'Escala','27AE60']];
+    kData.forEach(([val,lbl,clr],i)=>{
+      const kx=.3+i*3.12;
+      s3.addShape(pres.shapes.RECTANGLE,{x:kx,y:.82,w:2.9,h:2.55,fill:{color:WHITE}});
+      s3.addShape(pres.shapes.RECTANGLE,{x:kx,y:.82,w:2.9,h:.17,fill:{color:clr}});
+      s3.addText(val,{x:kx,y:1.55,w:2.9,h:.85,fontSize:26,color:clr,bold:true,align:'center',fontFace:'Arial'});
+      s3.addText(lbl,{x:kx,y:2.6,w:2.9,h:.42,fontSize:9,color:MUTED,align:'center',fontFace:'Arial'});
+    });
+
+    // ── S4: DIMENSIONES ──
+    const s4=slide(GRAY);
+    s4.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:W-SIDE,h:.62,fill:{color:BLUE}});
+    s4.addText(isClima?'RESULTADOS POR DIMENSIÓN':'RESULTADOS POR COMPETENCIA',
+      {x:.4,y:.1,w:W-SIDE-.6,h:.42,fontSize:17,color:WHITE,bold:true,fontFace:'Arial'});
+    const bXs=3.7, bXe=W-SIDE-.3, bTW=bXe-bXs;
+    dimStats.slice(0,11).forEach((d,i)=>{
+      const by=.82+i*.58, clrH=scoreColorHex(d.pct);
+      s4.addText(d.titulo.substring(0,26),{x:.35,y:by,w:3.2,h:.48,fontSize:8.5,color:DARK,fontFace:'Arial',valign:'middle'});
+      s4.addShape(pres.shapes.RECTANGLE,{x:bXs,y:by+.1,w:bTW,h:.27,fill:{color:'DDE3ED'}});
+      s4.addShape(pres.shapes.RECTANGLE,{x:bXs,y:by+.1,w:Math.max(bTW*d.pct/100,.04),h:.27,fill:{color:clrH}});
+      s4.addText(d.avg.toFixed(1)+'/'+escala+' ('+d.pct+'%)',{x:bXe+.05,y:by,w:1.35,h:.48,fontSize:7.5,color:clrH,bold:true,fontFace:'Arial',valign:'middle'});
+    });
+
+    // ── S5: POR DEPARTAMENTO ──
+    if(depts.length>0){
+      const s5=slide(GRAY);
+      s5.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:W-SIDE,h:.62,fill:{color:BLUE}});
+      s5.addText('ANÁLISIS POR DEPARTAMENTO',{x:.4,y:.1,w:W-SIDE-.6,h:.42,fontSize:17,color:WHITE,bold:true,fontFace:'Arial'});
+      const deptStats=depts.map(dept=>{
+        const dd=resp.filter(r=>(r.dept||r.ev_dept)===dept);
+        const sc=dd.map(r=>r.score??calculateScore(r,p));
+        return {dept,n:dd.length,avg:sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length):0};
+      }).sort((a,b)=>b.avg-a.avg);
+      deptStats.slice(0,9).forEach((d,i)=>{
+        const by=.82+i*.64, clrH=scoreColorHex(Math.round(d.avg));
+        s5.addText(d.dept.substring(0,22),{x:.35,y:by,w:3.2,h:.52,fontSize:9,color:DARK,fontFace:'Arial',valign:'middle'});
+        s5.addShape(pres.shapes.RECTANGLE,{x:bXs,y:by+.12,w:bTW,h:.28,fill:{color:'DDE3ED'}});
+        s5.addShape(pres.shapes.RECTANGLE,{x:bXs,y:by+.12,w:Math.max(bTW*d.avg/100,.04),h:.28,fill:{color:clrH}});
+        s5.addText(d.avg.toFixed(1)+'%',{x:bXe+.05,y:by,w:1.2,h:.52,fontSize:8,color:clrH,bold:true,fontFace:'Arial',valign:'middle'});
+      });
+    }
+
+    // ── S6: CIERRE ──
+    const s6=slide(WHITE);
+    s6.addShape(pres.shapes.RECTANGLE,{x:0,y:H-1.4,w:W-SIDE,h:1.4,fill:{color:LBLUE}});
+    s6.addText('Gracias por\ntu confianza.',{x:.5,y:1.4,w:W-SIDE-1,h:3.2,fontSize:36,color:DARK,bold:true,fontFace:'Arial'});
+    s6.addText('intraRHecursos · Tu gente es la clave.',{x:.5,y:H-1.3,w:W-SIDE-1,h:.5,fontSize:12,color:WHITE,fontFace:'Arial'});
+    s6.addText('IntraRHecursos.com',{x:.5,y:H-.72,w:W-SIDE-1,h:.32,fontSize:9,color:'D0E8F5',fontFace:'Arial'});
+
+    await pres.writeFile({fileName:'IntraRH_'+p.empresa.replace(/\s+/g,'_')+'_'+today()+'.pptx'});
+    showToast('✅ PowerPoint exportado','success');
+  }catch(e){showToast('Error PPTX: '+e.message,'error');console.error(e);}
+}
+
+// ── INFORMES INDIVIDUALES ──
+function exportIndividualPDF(r, p, escala, score, clasif) {
+  try {
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const W=210,H=297,mg=16,C=getProjectColors(p),SIDE=48;
+    doc.setFillColor(...C.primary); doc.rect(W-SIDE,0,SIDE,H,'F');
+    doc.setFillColor(...C.accent); doc.rect(0,H-30,W-SIDE,30,'F');
+    doc.setTextColor(...C.dark); doc.setFontSize(20); doc.setFont('helvetica','bold');
+    doc.text(p?.tipo==='clima'?'CLIMA\nORGANIZACIONAL':'EVALUACIÓN DE\nDESEMPEÑO',mg,40,{maxWidth:W-SIDE-mg*2});
+    doc.setFontSize(14); doc.setTextColor(...C.secondary); doc.setFont('helvetica','bold');
+    doc.text(p?.empresa||'',mg,80);
+    doc.setFontSize(11); doc.setTextColor(...C.dark); doc.setFont('helvetica','normal');
+    doc.text(p?.periodo||today(),mg,92);
+    // Colaborador
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(...C.dark);
+    doc.text('Colaborador: '+(r.nombre||r.ev_nombre||'—'),mg,115);
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.text('Fecha: '+fmtDate(r.fecha)+' | Score: '+score+'% | '+clasif,mg,122);
+    // Score box
+    doc.setFillColor(...C.light); doc.roundedRect(mg,130,W-SIDE-mg*2,22,3,3,'F');
+    doc.setFillColor(...scoreColor(score)); doc.roundedRect(mg,130,W-SIDE-mg*2,2,1,1,'F');
+    doc.setFontSize(20); doc.setFont('helvetica','bold'); doc.setTextColor(...scoreColor(score));
+    doc.text(score+'%',mg+8,145);
+    doc.setFontSize(11); doc.setTextColor(...C.dark); doc.text(clasif,mg+35,145);
+    // Dimensiones
+    let y=162;
+    doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(...C.dark);
+    doc.text(p?.tipo==='clima'?'Resultados por dimensión:':'Resultados por competencia:',mg,y); y+=7;
+    const items=p?.tipo==='clima'?(p.dimensiones||DEFAULT_DIMS):(p.competencias||DEFAULT_COMPS);
+    const bW=W-SIDE-mg*2-50;
+    items.forEach((d,di)=>{
+      const vals=[];
+      if(p?.tipo==='clima') d.preguntas.forEach((_,pi)=>{const v=r.dimResp?.['dim_'+di+'_'+pi];if(typeof v==='number')vals.push(v);});
+      else d.preguntas.forEach((_,pi)=>{const v=r.compResp?.['comp_'+di+'_'+pi];if(typeof v==='number')vals.push(v);});
+      const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length):0;
+      const pct=Math.round((avg/escala)*100);
+      const clr=scoreColor(pct);
+      doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...C.dark);
+      doc.text(d.titulo.substring(0,28),mg,y);
+      doc.setFillColor(220,226,235); doc.roundedRect(mg+50,y-4,bW,4,1,1,'F');
+      doc.setFillColor(...clr); doc.roundedRect(mg+50,y-4,Math.max(bW*pct/100,.5),4,1,1,'F');
+      doc.setFont('helvetica','bold'); doc.setTextColor(...clr);
+      doc.text(avg.toFixed(1)+'/'+escala,W-SIDE-2,y,{align:'right'}); y+=8;
+      if(y>H-25){doc.addPage();doc.setFillColor(...C.primary);doc.rect(W-SIDE,0,SIDE,H,'F');y=20;}
+    });
+    doc.setFontSize(6); doc.setTextColor(...C.muted);
+    doc.text('IntraRHecursos · '+today(),mg,H-5);
+    doc.save('IntraRH_Ind_'+(r.nombre||r.ev_nombre||'col').replace(/\s+/g,'_')+'_'+today()+'.pdf');
+    showToast('✅ PDF individual generado','success');
   }catch(e){showToast('Error PDF: '+e.message,'error');}
 }
 
-function exportWordProj(p,resp,isClima,items,escala){
-  const scores=resp.map(r=>r.score??calculateScore(r,p));
-  const avgScore=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
-  const dimRows=items.map((d,di)=>{const vals=[];if(isClima)resp.forEach(r=>d.preguntas.forEach((_,pi)=>{const v=r.dimResp?.['dim_'+di+'_'+pi];if(v)vals.push(v);}));else resp.forEach(r=>d.preguntas.forEach((_,pi)=>{const v=r.compResp?.['comp_'+di+'_'+pi];if(v)vals.push(v);}));const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):0;return `<tr><td>${d.titulo}</td><td>${vals.length}</td><td>${avg}/${escala}</td><td>${Math.round((avg/escala)*100)}%</td></tr>`;}).join('');
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial;font-size:11pt;margin:2cm;}h1{color:#7B4FA6;font-size:18pt;border-bottom:2pt solid #7B4FA6;padding-bottom:6pt;}h2{color:#2D2D3A;font-size:13pt;}table{border-collapse:collapse;width:100%;}th{background:#7B4FA6;color:#fff;padding:5pt 8pt;font-size:9pt;}td{padding:5pt 8pt;border-bottom:1pt solid #E4E2EE;}</style></head><body><h1>${p.nombre}</h1><p><b>Empresa:</b> ${p.empresa} · <b>Período:</b> ${p.periodo||'—'} · <b>Fecha:</b> ${today()}</p><h2>Indicadores</h2><table><tr><th>Métrica</th><th>Valor</th></tr><tr><td>Total respuestas</td><td>${resp.length}</td></tr><tr><td>Score promedio</td><td>${avgScore}%</td></tr></table><h2>${isClima?'Dimensiones':'Competencias'}</h2><table><tr><th>${isClima?'Dimensión':'Competencia'}</th><th>Respuestas</th><th>Promedio</th><th>%</th></tr>${dimRows}</table></body></html>`;
-  const blob=new Blob([html],{type:'application/msword'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`IntraRH_${p.empresa.replace(/ /g,'_')}_${today()}.doc`;a.click();
-  showToast('✅ Word exportado','success');
+function exportIndividualWord(r, p, escala, score, clasif) {
+  const items=p?.tipo==='clima'?(p.dimensiones||DEFAULT_DIMS):(p.competencias||DEFAULT_COMPS);
+  const rows=items.map((d,di)=>{
+    const vals=[];
+    if(p?.tipo==='clima') d.preguntas.forEach((_,pi)=>{const v=r.dimResp?.['dim_'+di+'_'+pi];if(typeof v==='number')vals.push(v);});
+    else d.preguntas.forEach((_,pi)=>{const v=r.compResp?.['comp_'+di+'_'+pi];if(typeof v==='number')vals.push(v);});
+    const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):0;
+    const pct=Math.round((avg/escala)*100);
+    const clr=pct>=80?'#27AE60':pct>=60?'#1AA7D8':pct>=40?'#F39C12':'#E74C3C';
+    return `<tr><td>${d.titulo}</td><td style="text-align:center;font-weight:bold;color:${clr};">${avg}/${escala}</td><td style="text-align:center;font-weight:bold;color:${clr};">${pct}%</td></tr>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial;font-size:11pt;margin:2cm;}
+  .cover{background:#1264A3;color:#fff;padding:30pt;margin:-2cm -2cm 20pt;}
+  .cover h1{font-size:20pt;font-weight:900;margin-bottom:6pt;}
+  .cover p{font-size:10pt;opacity:.85;}
+  .score{background:#F5F8FC;border-radius:5pt;padding:10pt 16pt;border-top:3pt solid #1264A3;margin:14pt 0;display:inline-block;}
+  h2{color:#1264A3;font-size:13pt;margin-top:18pt;}
+  table{border-collapse:collapse;width:100%;margin:8pt 0;}
+  th{background:#1264A3;color:#fff;padding:6pt 10pt;font-size:9pt;text-align:left;}
+  td{padding:6pt 10pt;border-bottom:1pt solid #E4E8EF;font-size:9pt;}
+  </style></head><body>
+  <div class="cover">
+    <h1>${p?.tipo==='clima'?'Clima Organizacional':'Evaluación de Desempeño'}</h1>
+    <p>${p?.empresa} · ${p?.periodo||today()}</p>
+  </div>
+  <h2>Colaborador</h2>
+  <p><b>${r.nombre||r.ev_nombre||'—'}</b> | Fecha: ${fmtDate(r.fecha)}</p>
+  <div class="score"><b style="font-size:22pt;color:#1264A3;">${score}%</b> <span style="font-size:12pt;color:#7882A0;">${clasif}</span></div>
+  <h2>${p?.tipo==='clima'?'Dimensiones':'Competencias'}</h2>
+  <table><thead><tr><th>Ítem</th><th>Promedio</th><th>%</th></tr></thead><tbody>${rows}</tbody></table>
+  </body></html>`;
+  const blob=new Blob([html],{type:'application/msword;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='IntraRH_Ind_'+(r.nombre||r.ev_nombre||'col').replace(/\s+/g,'_')+'_'+today()+'.doc'; a.click();
+  showToast('✅ Word individual generado','success');
 }
 
-async function exportPPTXProj(p,resp,isClima,items,escala){
-  try{
-    const pres=new PptxGenJS();pres.layout='LAYOUT_WIDE';pres.title='IntraRHecursos · '+p.nombre;
-    const PURPLE='7B4FA6',WHITE='FFFFFF',DARK='2D2D3A',MUTED='8B8BA0';
-    const scores=resp.map(r=>r.score??calculateScore(r,p));
-    const avgScore=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):0;
-    const s1=pres.addSlide();s1.background={color:PURPLE};
-    s1.addText('IntraRHecursos · '+CFG.firma,{x:.6,y:.5,w:12,h:.5,fontSize:11,color:'9B6FC6',fontFace:'Arial'});
-    s1.addText(p.nombre,{x:.6,y:1.1,w:11,h:1.4,fontSize:34,color:WHITE,bold:true,fontFace:'Arial'});
-    s1.addText(p.empresa+' · '+(p.periodo||'—'),{x:.6,y:2.6,w:11,h:.6,fontSize:16,color:'E4D8F3',fontFace:'Arial'});
-    s1.addText(resp.length+' respuestas · Score: '+avgScore+'% · '+today(),{x:.6,y:3.3,w:11,h:.5,fontSize:10,color:'C4AAD8',fontFace:'Arial'});
-    const s2=pres.addSlide();s2.background={color:'F7F6FA'};
-    s2.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:13.3,h:.9,fill:{color:PURPLE}});
-    s2.addText('Indicadores clave',{x:.5,y:.15,w:12,h:.6,fontSize:20,color:WHITE,bold:true,fontFace:'Arial',margin:0});
-    [[' ','Respuestas',String(resp.length),PURPLE],['⭐','Score promedio',avgScore+'%','F39C12'],['🏢','Empresa',p.empresa.substring(0,18),'3A9BD5'],['📅','Período',p.periodo||'—','27AE60']].forEach(([_,label,val,color],i)=>{const kx=.3+i*3.15;s2.addShape(pres.shapes.RECTANGLE,{x:kx,y:1.1,w:2.9,h:2.7,fill:{color:'FFFFFF'}});s2.addShape(pres.shapes.RECTANGLE,{x:kx,y:1.1,w:2.9,h:.2,fill:{color}});s2.addText(val,{x:kx,y:1.9,w:2.9,h:.7,fontSize:22,color,bold:true,align:'center',fontFace:'Arial',margin:0});s2.addText(label,{x:kx,y:2.7,w:2.9,h:.4,fontSize:10,color:MUTED,align:'center',fontFace:'Arial',margin:0});});
-    const s3=pres.addSlide();s3.background={color:'F7F6FA'};
-    s3.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:13.3,h:.9,fill:{color:PURPLE}});
-    s3.addText(isClima?'Resultados por dimensión':'Resultados por competencia',{x:.5,y:.15,w:12,h:.6,fontSize:20,color:WHITE,bold:true,fontFace:'Arial',margin:0});
-    let bY=1.1;
-    items.forEach((d,di)=>{const vals=[];if(isClima)resp.forEach(r=>d.preguntas.forEach((_,pi)=>{const v=r.dimResp?.['dim_'+di+'_'+pi];if(v)vals.push(v);}));else resp.forEach(r=>d.preguntas.forEach((_,pi)=>{const v=r.compResp?.['comp_'+di+'_'+pi];if(v)vals.push(v);}));const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length):0;const pct=avg/escala;const bClr=pct>=.8?'27AE60':pct>=.6?'3A9BD5':'F39C12';s3.addText(d.titulo.substring(0,28),{x:.4,y:bY,w:3.2,h:.38,fontSize:9,color:DARK,fontFace:'Arial',margin:0});s3.addShape(pres.shapes.RECTANGLE,{x:3.7,y:bY+.06,w:9.5,h:.26,fill:{color:'E4E2EE'}});s3.addShape(pres.shapes.RECTANGLE,{x:3.7,y:bY+.06,w:Math.max(9.5*pct,.05),h:.26,fill:{color:bClr}});s3.addText(avg.toFixed(1)+'/'+escala,{x:13.3,y:bY,w:1.5,h:.38,fontSize:8,bold:true,color:bClr,align:'right',fontFace:'Arial',margin:0});bY+=.5;});
-    await pres.writeFile({fileName:'IntraRH_'+p.empresa.replace(/ /g,'_')+'_'+today()+'.pptx'});
-    showToast('✅ PPTX exportado','success');
-  }catch(e){showToast('Error PPTX: '+e.message,'error');}
 }
 
 // ══════════════════════════════════════════
