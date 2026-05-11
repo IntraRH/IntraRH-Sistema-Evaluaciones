@@ -28,6 +28,19 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
 
+/* ── SPINNER ── */
+.spinner{
+  display:inline-block;
+  width:12px;height:12px;
+  border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin .6s linear infinite;
+}
+@keyframes spin{
+  to{transform:rotate(360deg);}
+}
+
 /* ── SIDEBAR ── */
 .sidebar{
   width:236px;background:var(--white);
@@ -11687,13 +11700,97 @@ async function pubComenzar() {
   renderPubForm();
   await pubRecuperarBorrador();
 }
+
+// ── VALIDACIÓN DE CAMPOS REQUERIDOS ──
+function validarIdentificacion() {
+  const p = pubProyecto;
+  if (!p || p.tipo !== 'clima') return true;
+  
+  const identCfg = p.identificacion_config || DEFAULT_IDENTIFICACION;
+  const camposReq = (identCfg.campos || []).filter(c => 
+    c.requerido === true && 
+    c.mostrar !== false && 
+    c.tipo !== 'id_subtitulo' && 
+    c.tipo !== 'id_parrafo'
+  );
+  
+  // Si modo anónimo está activo, algunos campos no son requeridos
+  const esAnon = document.getElementById('pub-chk-anon')?.checked || false;
+  
+  let primerError = null;
+  
+  for (const c of camposReq) {
+    // Saltar validación de nombre/cargo si es anónimo
+    if (esAnon && (c.id === 'nombre' || c.id === 'cargo')) continue;
+    
+    const domId = 'pub-id-' + c.id;
+    const el = document.getElementById(domId);
+    if (!el) continue;
+    
+    let val = el.value;
+    
+    // Caso especial: select con opción "otro"
+    if (el.tagName === 'SELECT' && el.value === '__otro__') {
+      val = document.getElementById(domId + '-otro')?.value || '';
+    }
+    
+    // Validar que no esté vacío
+    if (!val || val === '' || val === 'Seleccionar…') {
+      // Resaltar campo con error
+      el.style.borderColor = 'var(--red)';
+      el.style.borderWidth = '2px';
+      
+      if (!primerError) {
+        primerError = el;
+        // Scroll al primer campo con error
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      
+      // Remover el resaltado cuando el usuario empiece a llenar
+      el.addEventListener('input', function removerError() {
+        el.style.borderColor = '';
+        el.style.borderWidth = '';
+        el.removeEventListener('input', removerError);
+      }, { once: true });
+    } else {
+      // Limpiar estilo si ya tiene valor
+      el.style.borderColor = '';
+      el.style.borderWidth = '';
+    }
+  }
+  
+  if (primerError) {
+    primerError.focus();
+    return false;
+  }
+  
+  return true;
+}
+
 async function pubNext() {
   const btn = document.getElementById('pub-btn-next');
   const btnPrev = document.getElementById('pub-btn-prev');
-  if (btn) { btn.disabled=true; btn.textContent='Guardando…'; }
+  
+  // VALIDACIÓN: No permitir avanzar desde identificación con campos vacíos
+  if (pubStep === 0 && pubProyecto?.tipo === 'clima') {
+    if (!validarIdentificacion()) {
+      showToast('⚠️ Por favor completa los campos requeridos antes de continuar', 'error');
+      return;
+    }
+  }
+  
+  if (btn) { btn.disabled=true; btn.innerHTML='<span style="display:flex;align-items:center;gap:0.3rem;"><span class="spinner"></span>Guardando…</span>'; }
   if (btnPrev) btnPrev.disabled=true;
+  
   pubSaveStep();
   await pubGuardarBorrador();
+  
+  // Feedback visual de guardado exitoso
+  if (btn) {
+    btn.innerHTML = '<span style="color:var(--green);display:flex;align-items:center;gap:0.3rem;">✓ Guardado</span>';
+    await new Promise(r => setTimeout(r, 400));
+  }
+  
   if (pubStep < getPubSteps().length - 1) { pubStep++; renderPubForm(); }
   if (btn) btn.disabled=false;
   if (btnPrev) btnPrev.disabled=false;
