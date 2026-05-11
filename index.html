@@ -11376,7 +11376,7 @@ async function detectarModoParticipante() {
     if (!proy) { mostrarError('Proyecto no encontrado.'); return true; }
     if (proy.estado==='cerrado'||proy.estado==='borrador') { mostrarError('Esta evaluación ya no está disponible.'); return true; }
     if (pt.status==='respondido') { mostrarYaRespondido(proy); return true; }
-    pubParticipante=pt; pubProyecto=proy; activarModoParticipante(); return true;
+    pubParticipante=pt; pubProyecto=proy; await activarModoParticipante(); return true;
   }
 
   // ── LINK GENERAL ──
@@ -11484,7 +11484,7 @@ async function detectarModoParticipante() {
     console.log('🎯 Activando modo participante para:', proy.empresa);
     pubParticipante=null; 
     pubProyecto=proy; 
-    activarModoParticipante(); 
+    await activarModoParticipante(); 
     return true;
   }
   return false;
@@ -11517,7 +11517,7 @@ function mostrarYaRespondido(proy) {
     </div>`;
 }
 
-function activarModoParticipante() {
+async function activarModoParticipante() {
   const panel = document.getElementById('panel-participante');
   panel.style.cssText = 'display:block!important;position:fixed;inset:0;z-index:500;background:var(--bg);overflow-y:auto;';
   try { document.getElementById('main-area').style.display  = 'none'; }catch(e){}
@@ -11614,6 +11614,9 @@ function activarModoParticipante() {
   `;
   pubStep=0;
   renderPubForm();
+  
+  // Verificar si el participante ya respondió (después de cargar el UI)
+  await pubVerificarRespuestaCompleta();
 }
 
 function getPubSteps() {
@@ -11671,6 +11674,13 @@ function renderPubForm() {
 }
 
 async function pubComenzar() {
+  // Verificar si ya respondió antes de permitir comenzar
+  const yaRespondio = await pubVerificarRespuestaCompleta();
+  if (yaRespondio) {
+    console.log('❌ Participante ya completó este cuestionario');
+    return;
+  }
+  
   document.getElementById('pub-welcome-card').style.display='none';
   document.getElementById('pub-form-card').style.display='';
   pubStep = 0;
@@ -11764,6 +11774,80 @@ async function pubGuardarBorrador() {
     clearTimeout(_pubSaveTimer);
     _pubSaveTimer = setTimeout(() => { if (ind) ind.style.opacity = '0'; }, 500);
   }
+}
+
+// ── VERIFICAR SI YA RESPONDIÓ ──
+async function pubVerificarRespuestaCompleta() {
+  if (!pubProyecto) return false;
+  const tokenFilter = pubParticipante?.token;
+  if (!tokenFilter) return false;
+  
+  try {
+    // Buscar respuestas completas con este token
+    const { data, error } = await _supa
+      .from('irh_respuestas')
+      .select('*')
+      .eq('data_json->>proyectoId', pubProyecto.id)
+      .eq('data_json->>estado', 'completo')
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+    if (error) {
+      console.warn('Error verificando respuesta:', error.message);
+      return false;
+    }
+    
+    if (!data?.length) return false;
+    
+    // Verificar si existe una respuesta completa con este token
+    const respuestaExistente = data.find(r => (r.data_json||{}).token === tokenFilter);
+    
+    if (respuestaExistente) {
+      const fechaRespuesta = new Date(respuestaExistente.created_at).toLocaleDateString('es-DO', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      _mostrarPantallaYaRespondio(fechaRespuesta);
+      return true;
+    }
+    
+    return false;
+  } catch(e) {
+    console.warn('Error en pubVerificarRespuestaCompleta:', e.message);
+    return false;
+  }
+}
+
+function _mostrarPantallaYaRespondio(fecha) {
+  const welcomeCard = document.getElementById('pub-welcome-card');
+  if (!welcomeCard) return;
+  
+  welcomeCard.innerHTML = `
+    <div style="text-align:center;padding:2rem 1rem;">
+      <div style="font-size:4rem;margin-bottom:1rem;">✅</div>
+      <h2 style="font-size:1.5rem;font-weight:900;color:var(--text);margin-bottom:1rem;">Ya has completado este cuestionario</h2>
+      <p style="font-size:1rem;color:var(--muted);line-height:1.6;max-width:500px;margin:0 auto 1.5rem;">
+        Tu respuesta fue registrada exitosamente el <strong>${fecha}</strong>.
+      </p>
+      <div style="background:var(--blue-pale);border:1.5px solid var(--blue-mid);border-radius:var(--rs);padding:1rem;margin:1.5rem auto;max-width:500px;text-align:left;">
+        <div style="font-size:.85rem;font-weight:700;color:var(--blue);margin-bottom:.5rem;">ℹ️ Importante</div>
+        <div style="font-size:.82rem;color:var(--text);line-height:1.5;">
+          Solo se permite una respuesta por participante. Si necesitas modificar tu respuesta o crees que esto es un error, contacta al administrador del proyecto.
+        </div>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:1.5rem;">
+        Gracias por tu participación.
+      </p>
+    </div>
+  `;
+  
+  // Ocultar el botón de comenzar y el formulario
+  const formCard = document.getElementById('pub-form-card');
+  if (formCard) formCard.style.display = 'none';
 }
 
 // ── RECUPERAR BORRADOR ──
@@ -12686,6 +12770,45 @@ async function pubEnviar() {
         token: pubParticipante.token
       } : 'LINK GENERAL (sin participante específico)'
     });
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // VALIDACIÓN FINAL: Verificar que no exista una respuesta completa previa
+    // ═══════════════════════════════════════════════════════════════════
+    const tokenFilter = pubParticipante?.token;
+    if (tokenFilter) {
+      try {
+        const { data: respuestasExistentes, error: checkError } = await _supa
+          .from('irh_respuestas')
+          .select('*')
+          .eq('data_json->>proyectoId', p.id)
+          .eq('data_json->>estado', 'completo')
+          .order('created_at', { ascending: false })
+          .limit(10);
+        
+        if (!checkError && respuestasExistentes?.length) {
+          const yaRespondio = respuestasExistentes.find(r => (r.data_json||{}).token === tokenFilter);
+          if (yaRespondio) {
+            console.warn('❌ VALIDACIÓN DUPLICADO: Ya existe respuesta completa con este token');
+            _resetBtn();
+            showToast('❌ Ya has completado este cuestionario anteriormente', 'error');
+            setTimeout(() => {
+              const fechaRespuesta = new Date(yaRespondio.created_at).toLocaleDateString('es-DO', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              });
+              _mostrarPantallaYaRespondio(fechaRespuesta);
+            }, 1500);
+            return;
+          }
+        }
+      } catch(dupCheckErr) {
+        console.warn('⚠️ Error verificando duplicados (continuando):', dupCheckErr.message);
+        // Continuar con el envío si falla la verificación
+      }
+    }
     
     if (p.tipo==='clima') {
       const identCfg = p.identificacion_config || DEFAULT_IDENTIFICACION;
