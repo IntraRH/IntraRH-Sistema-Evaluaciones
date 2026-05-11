@@ -11817,7 +11817,7 @@ async function pubGoTo(i) {
 // ── AUTOSAVE: guarda borrador en Supabase en cada paso ──
 let _pubSaveTimer = null;
 async function pubGuardarBorrador() {
-  if (!pubProyecto || !_supa) return;
+  if (!pubProyecto) return;
 
   const ind  = document.getElementById('pub-autosave-indicator');
   const icon = document.getElementById('pub-autosave-icon');
@@ -11846,31 +11846,52 @@ async function pubGuardarBorrador() {
   // Limpiar claves internas antes de enviar
   const { _draftId, _draftEntry, ...entryClean } = entry;
 
-  const result = await saveRespuestaToSupa(entryClean);
-
-  if (result?.ok) {
-    // Persistir _supaid en pubResp para futuros upserts del mismo borrador
-    pubResp._supaid     = entryClean._supaid;
-    pubResp._draftId    = entryClean.id;
-    pubResp._draftEntry = entryClean;
+  let guardadoSupabase = false;
+  
+  // ═══ CAPA 1: SUPABASE (si está disponible) ═══
+  if (_supa) {
+    try {
+      const result = await saveRespuestaToSupa(entryClean);
+      if (result?.ok) {
+        guardadoSupabase = true;
+        pubResp._supaid     = entryClean._supaid;
+        pubResp._draftId    = entryClean.id;
+        pubResp._draftEntry = entryClean;
+        console.log('✅ Borrador guardado en Supabase');
+      } else {
+        console.warn('⚠️ Supabase no pudo guardar borrador');
+      }
+    } catch(e) {
+      console.warn('⚠️ Error guardando en Supabase:', e.message);
+    }
+  }
+  
+  // ═══ CAPA 2: LOCALSTORAGE (SIEMPRE, no solo como fallback) ═══
+  try {
+    if (!pubResp._draftId) pubResp._draftId = entryClean.id;
+    const _localBorr = loadDB('irh_respuestas', []);
+    const _bIdx = _localBorr.findIndex(r => r.id === entryClean.id);
+    if (_bIdx >= 0) _localBorr[_bIdx] = entryClean; 
+    else _localBorr.push(entryClean);
+    saveDB('irh_respuestas', _localBorr);
+    console.log('✅ Borrador guardado en localStorage');
+  } catch(e) { 
+    console.error('❌ CRÍTICO: No se pudo guardar en localStorage:', e.message); 
+  }
+  
+  // ═══ FEEDBACK VISUAL ═══
+  if (guardadoSupabase) {
     if (ind) { ind.style.color = 'var(--green)'; }
     if (icon) icon.textContent = '✓';
     if (txt)  txt.textContent  = 'Guardado';
-    clearTimeout(_pubSaveTimer);
-    _pubSaveTimer = setTimeout(() => { if (ind) ind.style.opacity = '0'; }, 2500);
   } else {
-    // Fallback: persistir borrador localmente si Supabase no está disponible
-    try {
-      if (!pubResp._draftId) pubResp._draftId = entryClean.id;
-      const _localBorr = loadDB('irh_respuestas', []);
-      const _bIdx = _localBorr.findIndex(r => r.id === entryClean.id);
-      if (_bIdx >= 0) _localBorr[_bIdx] = entryClean; else _localBorr.push(entryClean);
-      saveDB('irh_respuestas', _localBorr);
-    } catch(e) { console.warn('borrador local fallback:', e.message); }
-    // Fallo silencioso en UI — la respuesta final siempre se guarda aunque el borrador falle
-    clearTimeout(_pubSaveTimer);
-    _pubSaveTimer = setTimeout(() => { if (ind) ind.style.opacity = '0'; }, 500);
+    if (ind) { ind.style.color = 'var(--blue)'; }
+    if (icon) icon.textContent = '💾';
+    if (txt)  txt.textContent  = 'Guardado local';
   }
+  
+  clearTimeout(_pubSaveTimer);
+  _pubSaveTimer = setTimeout(() => { if (ind) ind.style.opacity = '0'; }, 2500);
 }
 
 // ── VERIFICAR SI YA RESPONDIÓ ──
@@ -11947,11 +11968,15 @@ function _mostrarPantallaYaRespondio(fecha) {
   if (formCard) formCard.style.display = 'none';
 }
 
-// ── RECUPERAR BORRADOR ──
+// ── RECUPERAR BORRADOR CON FALLBACK MÚLTIPLE ──
 async function pubRecuperarBorrador() {
   if (!pubProyecto) return;
   const tokenFilter = pubParticipante?.token;
   if (!tokenFilter) return;
+  
+  let borrador = null;
+  
+  // INTENTO 1: Buscar en Supabase
   try {
     const { data, error } = await _supa
       .from('irh_respuestas')
@@ -11960,13 +11985,61 @@ async function pubRecuperarBorrador() {
       .eq('data_json->>estado', 'borrador')
       .order('created_at', { ascending: false })
       .limit(5);
-    if (error || !data?.length) return;
-    const matchRow  = data.find(r => (r.data_json||{}).token === tokenFilter) || data[0];
-    const draft     = { ...(matchRow.data_json || {}), _supaid: matchRow.id };
-    const savedStep = draft.paso_actual || 0;
-    pubResp          = { ...draft };
-    pubResp._supaid  = matchRow.id;
-    pubResp._draftId = draft.id;
+    
+    if (!error && data?.length) {
+      const matchRow = data.find(r => (r.data_json||{}).token === tokenFilter);
+      if (matchRow) {
+        borrador = { ...(matchRow.data_json || {}), _supaid: matchRow.id };
+        console.log('✅ Borrador recuperado desde Supabase');
+      }
+    }
+  } catch(e) { 
+    console.warn('⚠️ Supabase no disponible, buscando en localStorage...'); 
+  }
+  
+  // INTENTO 2: Fallback a localStorage si Supabase falló
+  if (!borrador) {
+    try {
+      const localResp = JSON.parse(localStorage.getItem('irh_respuestas') || '[]');
+      borrador = localResp.find(r => 
+        r.proyectoId === pubProyecto.id &&
+        r.token === tokenFilter &&
+        r.estado === 'borrador'
+      );
+      
+      if (borrador) {
+        console.log('✅ Borrador recuperado desde localStorage');
+      }
+    } catch(e) {
+      console.warn('⚠️ No se pudo recuperar de localStorage:', e);
+    }
+  }
+  
+  // INTENTO 3: Buscar en backup por proyecto
+  if (!borrador) {
+    try {
+      const backupKey = 'irh_backup_' + pubProyecto.id;
+      const backup = JSON.parse(localStorage.getItem(backupKey) || '[]');
+      borrador = backup.find(r => 
+        r.token === tokenFilter &&
+        r.estado === 'borrador'
+      );
+      
+      if (borrador) {
+        console.log('✅ Borrador recuperado desde backup de proyecto');
+      }
+    } catch(e) {
+      console.warn('⚠️ No se pudo recuperar de backup:', e);
+    }
+  }
+  
+  // Si encontró borrador en cualquiera de los intentos
+  if (borrador) {
+    const savedStep = borrador.paso_actual || 0;
+    pubResp = { ...borrador };
+    pubResp._supaid = borrador._supaid;
+    pubResp._draftId = borrador.id;
+    
     if (savedStep > 0) {
       _mostrarBannerRetomar(savedStep);
     } else {
@@ -11979,7 +12052,8 @@ async function pubRecuperarBorrador() {
       clearTimeout(_pubSaveTimer);
       _pubSaveTimer = setTimeout(() => { if (ind) ind.style.opacity = '0'; }, 4000);
     }
-  } catch(e) { console.warn('pubRecuperarBorrador:', e.message); }
+  }
+}
 }
 function _mostrarBannerRetomar(savedStep) {
   const existing = document.getElementById('pub-retomar-banner');
